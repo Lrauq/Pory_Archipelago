@@ -3,34 +3,34 @@ from math import ceil
 from typing import List
 from BaseClasses import CollectionState
 
-import dk64r.randomizer.CollectibleLogicFiles.AngryAztec
-import dk64r.randomizer.CollectibleLogicFiles.CreepyCastle
-import dk64r.randomizer.CollectibleLogicFiles.CrystalCaves
-import dk64r.randomizer.CollectibleLogicFiles.DKIsles
-import dk64r.randomizer.CollectibleLogicFiles.FranticFactory
-import dk64r.randomizer.CollectibleLogicFiles.FungiForest
-import dk64r.randomizer.CollectibleLogicFiles.GloomyGalleon
-import dk64r.randomizer.CollectibleLogicFiles.JungleJapes
-import dk64r.randomizer.LogicFiles.AngryAztec
-import dk64r.randomizer.LogicFiles.CreepyCastle
-import dk64r.randomizer.LogicFiles.CrystalCaves
-import dk64r.randomizer.LogicFiles.DKIsles
-import dk64r.randomizer.LogicFiles.FranticFactory
-import dk64r.randomizer.LogicFiles.FungiForest
-import dk64r.randomizer.LogicFiles.GloomyGalleon
-import dk64r.randomizer.LogicFiles.HideoutHelm
-import dk64r.randomizer.LogicFiles.JungleJapes
-import dk64r.randomizer.LogicFiles.Shops
-from dk64r.randomizer.Enums.Collectibles import Collectibles
-from dk64r.randomizer.Enums.Events import Events
-from dk64r.randomizer.Enums.Items import Items
-from dk64r.randomizer.Enums.Kongs import Kongs
-from dk64r.randomizer.Enums.Levels import Levels
-from dk64r.randomizer.Enums.Locations import Locations
-from dk64r.randomizer.Enums.Regions import Regions as RegionEnum
-from dk64r.randomizer.Enums.Switches import Switches
-from dk64r.randomizer.Enums.SwitchTypes import SwitchType
-from dk64r.randomizer.Enums.Settings import (
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.AngryAztec
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.CreepyCastle
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.CrystalCaves
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.DKIsles
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.FranticFactory
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.FungiForest
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.GloomyGalleon
+import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.JungleJapes
+import worlds.dk64.DK64R.randomizer.LogicFiles.AngryAztec
+import worlds.dk64.DK64R.randomizer.LogicFiles.CreepyCastle
+import worlds.dk64.DK64R.randomizer.LogicFiles.CrystalCaves
+import worlds.dk64.DK64R.randomizer.LogicFiles.DKIsles
+import worlds.dk64.DK64R.randomizer.LogicFiles.FranticFactory
+import worlds.dk64.DK64R.randomizer.LogicFiles.FungiForest
+import worlds.dk64.DK64R.randomizer.LogicFiles.GloomyGalleon
+import worlds.dk64.DK64R.randomizer.LogicFiles.HideoutHelm
+import worlds.dk64.DK64R.randomizer.LogicFiles.JungleJapes
+import worlds.dk64.DK64R.randomizer.LogicFiles.Shops
+from worlds.dk64.DK64R.randomizer.Enums.Collectibles import Collectibles
+from worlds.dk64.DK64R.randomizer.Enums.Events import Events
+from worlds.dk64.DK64R.randomizer.Enums.Items import Items
+from worlds.dk64.DK64R.randomizer.Enums.Kongs import Kongs
+from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
+from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
+from worlds.dk64.DK64R.randomizer.Enums.Regions import Regions as RegionEnum
+from worlds.dk64.DK64R.randomizer.Enums.Switches import Switches
+from worlds.dk64.DK64R.randomizer.Enums.SwitchTypes import SwitchType
+from worlds.dk64.DK64R.randomizer.Enums.Settings import (
     ActivateAllBananaports,
     BananaportRando,
     DamageAmount,
@@ -46,13 +46,13 @@ from dk64r.randomizer.Enums.Settings import (
     WinCondition,
     HelmSetting,
 )
-from dk64r.randomizer.Enums.Time import Time
-from dk64r.randomizer.Enums.Types import Types
-from dk64r.randomizer.Lists.Item import ItemList
-from dk64r.randomizer.Enums.Maps import Maps
-from dk64r.randomizer.Lists.Warps import BananaportVanilla
-from dk64r.randomizer.Patching.Lib import IsItemSelected
-from dk64r.randomizer.Prices import AnyKongCanBuy, CanBuy
+from worlds.dk64.DK64R.randomizer.Enums.Time import Time
+from worlds.dk64.DK64R.randomizer.Enums.Types import Types
+from worlds.dk64.DK64R.randomizer.Lists.Item import ItemList
+from worlds.dk64.DK64R.randomizer.Enums.Maps import Maps
+from worlds.dk64.DK64R.randomizer.Lists.Warps import BananaportVanilla
+from worlds.dk64.DK64R.randomizer.Patching.Lib import IsItemSelected
+from worlds.dk64.DK64R.randomizer.Prices import AnyKongCanBuy, CanBuy
 from worlds.dk64.Items import DK64Item
 
 STARTING_SLAM = 0  # Currently we're assuming you always start with 1 slam
@@ -288,8 +288,6 @@ class LogicVarHolder:
 
         self.bananaHoard = False
 
-        # self.UpdateKongs()
-
     def isPriorHelmComplete(self, kong: Kongs):
         """Determine if there is access to the kong's helm room."""
         if self.settings.helm_setting == HelmSetting.skip_all or Events.HelmFinished in self.Events:
@@ -310,17 +308,49 @@ class LogicVarHolder:
         for x in range(5):
             self.Coins[x] = (self.RegularCoins[x] + (5 * self.RainbowCoins)) - self.SpentCoins[x]
 
-    def UpdateFromArchipelagoItems(self, collectionState: CollectionState, archItems: List[DK64Item]):
+    def UpdateFromArchipelagoItems(self, collectionState: CollectionState):
         """Update logic variables based on the DK64Items found by Archipelago."""
         self.Reset()
         ownedItems = []
+        cbArchItems = []
+        eventArchItems = []
         for item_name, item_count in collectionState.prog_items[self.world.player].items():
-            corresponding_item = [item for item in ItemList.values() if item.name == item_name]
-            for i in range(item_count):
-                ownedItems.append(corresponding_item)
-        for item in archItems:
-            ownedItems.append(item.dk64_id)
+            if item_name.startswith("Collectible CBs"):
+                for i in range(item_count):
+                    cbArchItems.append(item_name)
+            elif item_name.startswith("Event "):
+                eventArchItems.append(item_name)
+            else:
+                corresponding_item = [item for item in ItemList.values() if item.name == item_name]
+                for i in range(item_count):
+                    ownedItems.append(corresponding_item)
+
+        # We update Events before updating items because we need to know the status of a few events for some items
+        for item_name in eventArchItems:
+            # Event names are carefully named in the following format:
+            # index 0: "Event" - needed to identify this as an Event item
+            # index 1: the Events enum name as a string
+            item_data = item_name.split(" ")
+            event = Events[item_data[1]]
+            self.AddEvent(event)
+
         self.Update(ownedItems)
+
+        # We update CBs after updating items because we need to know if we have each Kong
+        for item_name in cbArchItems:
+            # CBs are carefully named in the following format:
+            # index 0: "Collectible CBs" - needed to identify this as a collectible item
+            # index 1: the Kong's name, matching the Kongs enum
+            # index 2: the level's name, matching the Levels enum
+            # index 3: the quantity of CBs (as a string!)
+            item_data = item_name.split(", ")
+            kong = Kongs[item_data[1]]
+            # In order for our medal/T&S logic to work properly, we don't actually "own" any of these cbs if we don't have the associated Kong
+            if not self.HasKong(kong):
+                continue
+            level = Levels[item_data[2]]
+            quantity = int(item_data[3])
+            self.ColoredBananas[level][kong] += quantity
 
     def Update(self, ownedItems):
         """Update logic variables based on owned items."""
@@ -555,11 +585,6 @@ class LogicVarHolder:
         """Add an event to events list so it can be checked for logically."""
         self.Events.append(event)
 
-    def SetKong(self, kong):
-        """Set current kong for logic."""
-        # self.kong = kong
-        # self.UpdateKongs()
-
     def GetKongs(self):
         """Return all owned kongs."""
         ownedKongs = []
@@ -574,14 +599,6 @@ class LogicVarHolder:
         if self.chunky:
             ownedKongs.append(Kongs.chunky)
         return ownedKongs
-
-    def UpdateKongs(self):
-        """Set variables for current kong based on self.kong."""
-        # self.isdonkey = self.kong == Kongs.donkey
-        # self.isdiddy = self.kong == Kongs.diddy
-        # self.islanky = self.kong == Kongs.lanky
-        # self.istiny = self.kong == Kongs.tiny
-        # self.ischunky = self.kong == Kongs.chunky
 
     def IsKong(self, kong):
         """Check if logic is currently a specific kong."""

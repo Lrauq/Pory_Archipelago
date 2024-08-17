@@ -1,13 +1,16 @@
 import typing
 
-from BaseClasses import CollectionState, MultiWorld, Region, Entrance, Location
+from BaseClasses import CollectionState, ItemClassification, MultiWorld, Region, Entrance, Location
 from worlds.AutoWorld import World
 
-from dk64r.randomizer.Lists import Location as DK64RLocation
-from dk64r.randomizer.LogicClasses import LocationLogic, TransitionFront
+from worlds.dk64.DK64R.randomizer.Enums.Collectibles import Collectibles
+from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
+from worlds.dk64.DK64R.randomizer.Lists import Location as DK64RLocation
+from worlds.dk64.DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront
+from worlds.dk64.Items import DK64Item
 from worlds.generic.Rules import set_rule
 from .Logic import LogicVarHolder
-from dk64r.randomizer.LogicFiles import (
+from worlds.dk64.DK64R.randomizer.LogicFiles import (
     AngryAztec,
     CreepyCastle,
     CrystalCaves,
@@ -18,6 +21,16 @@ from dk64r.randomizer.LogicFiles import (
     FranticFactory,
     GloomyGalleon,
     Shops,
+)
+from worlds.dk64.DK64R.randomizer.CollectibleLogicFiles import (
+    AngryAztec as AztecCollectibles,
+    CreepyCastle as CastleCollectibles,
+    CrystalCaves as CavesCollectibles,
+    DKIsles as IslesCollectibles,
+    FungiForest as ForestCollectibles,
+    JungleJapes as JapesCollectibles,
+    FranticFactory as FactoryCollectibles,
+    GloomyGalleon as GalleonCollectibles,
 )
 
 BASE_ID = 0xD64000
@@ -36,7 +49,17 @@ all_locations.update({"Victory": 0x00})  # Temp for generating goal location
 lookup_id_to_name: typing.Dict[int, str] = {id: name for name, id in all_locations.items()}
 
 
-def create_regions(multiworld: MultiWorld, player: int, logic_holder: LogicVarHolder):    
+def create_regions(multiworld: MultiWorld, player: int, logic_holder: LogicVarHolder):
+    collectible_regions = [
+        AztecCollectibles.LogicRegions,
+        CastleCollectibles.LogicRegions,
+        CavesCollectibles.LogicRegions,
+        IslesCollectibles.LogicRegions,
+        ForestCollectibles.LogicRegions,
+        JapesCollectibles.LogicRegions,
+        FactoryCollectibles.LogicRegions,
+        GalleonCollectibles.LogicRegions,
+    ]
     for level_regions in [
         AngryAztec.LogicRegions,
         CreepyCastle.LogicRegions,
@@ -50,16 +73,17 @@ def create_regions(multiworld: MultiWorld, player: int, logic_holder: LogicVarHo
         Shops.LogicRegions,
     ]:
         for region_id in level_regions:
-            location_logics = []
             region_obj = level_regions[region_id]
-            for loc in region_obj.locations:
-                if not loc.isAuxiliaryLocation:
-                    location_logics.append(loc)
-            multiworld.regions.append(create_region(multiworld, player, region_obj.name, location_logics, logic_holder))
+            location_logics = [loc for loc in region_obj.locations if not loc.isAuxiliaryLocation]
+            collectibles = [] 
+            if region_id in collectible_regions.keys():
+                collectibles = [col for col in collectible_regions[region_id] if col.type in (Collectibles.bunch, Collectibles.banana, Collectibles.balloon)]
+            events = [event for event in region_obj.events]
+            multiworld.regions.append(create_region(multiworld, player, region_obj.name, region_obj.level, location_logics, collectibles, events, logic_holder))
 
 
-def create_region(multiworld: MultiWorld, player: int, name: str, location_logics: typing.List[LocationLogic], logic_holder: LogicVarHolder) -> Region:
-    new_region = Region(name, player, multiworld)
+def create_region(multiworld: MultiWorld, player: int, region_name: str, level: Levels, location_logics: typing.List[LocationLogic], collectibles: typing.List[Collectible], events: typing.List[Event], logic_holder: LogicVarHolder) -> Region:
+    new_region = Region(region_name, player, multiworld)
     if location_logics:
         for location_logic in location_logics:
             location_name = DK64RLocation.LocationListOriginal[location_logic.id].name
@@ -67,6 +91,30 @@ def create_region(multiworld: MultiWorld, player: int, name: str, location_logic
             location = DK64Location(player, location_name, loc_id, new_region)
             set_rule(location, lambda state: hasDK64RLocation(state, logic_holder, location_logic))
             new_region.locations.append(location)
+
+    collectible_id = 0
+    for collectible in collectibles:
+        collectible_id += 1
+        location_name = region_name + " Collectible " + collectible_id +  ": " + collectible.kong.name + " " + collectible.type.name
+        location = DK64Location(player, location_name, None, new_region)
+        set_rule(location, lambda state: hasDK64RCollectible(state, logic_holder, collectible))
+        quantity = collectible.amount
+        if collectible.type == Collectibles.bunch:
+            quantity *= 5
+        elif collectible.type == Collectibles.balloon:
+            quantity *= 10
+        location.place_locked_item(DK64Item("Collectible CBs," + collectible.kong.name + ", " + level.name + ", " + quantity, ItemClassification.progression, None, player))
+        new_region.locations.append(location)
+    
+    for event in events:
+        location_name = region_name + " Event " + event.name.name
+        location = DK64Location(player, location_name, None, new_region)
+        set_rule(location, lambda state: hasDK64REvent(state, logic_holder, event))
+        location.place_locked_item(DK64Item("Event " + event.name.name, ItemClassification.progression, None, player))
+        new_region.locations.append(location)
+    
+    # events go here too, probably
+    
     return new_region
 
 
@@ -127,3 +175,13 @@ def hasDK64RTransition(state: CollectionState, logic: LogicVarHolder, exit: Tran
 def hasDK64RLocation(state: CollectionState, logic: LogicVarHolder, location: LocationLogic):
     logic.UpdateFromArchipelagoItems(state)
     return location.logic(logic)
+
+
+def hasDK64RCollectible(state: CollectionState, logic: LogicVarHolder, collectible: Collectible):
+    logic.UpdateFromArchipelagoItems(state)
+    return collectible.logic(logic)
+
+
+def hasDK64REvent(state: CollectionState, logic: LogicVarHolder, event: Event):
+    logic.UpdateFromArchipelagoItems(state)
+    return event.logic(logic)

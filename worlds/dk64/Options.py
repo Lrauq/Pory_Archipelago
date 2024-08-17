@@ -2,10 +2,10 @@ import typing
 
 from Options import Choice, Range, Option, Toggle, DeathLink, DefaultOnToggle, OptionList
 
-from randomizer.Enums.Settings import SettingsStringEnum
-from randomizer.Enums.Settings import SettingsStringTypeMap
-from randomizer.Enums.Settings import SettingsStringDataType
-from randomizer.Enums.Settings import SettingsMap as DK64RSettingsMap
+from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsStringEnum
+from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsStringTypeMap
+from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsStringDataType
+from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsMap as DK64RSettingsMap
 
 
 # DK64_TODO: Get Options from DK64R
@@ -34,6 +34,7 @@ def GenerateDK64Options() -> typing.Dict[str, type(Option)]:
 
 
 dk64_options: typing.Dict[str, type(Option)] = {
+    "settings_string": ""
 #    "death_link": DeathLink,
 #    "goal": Goal,
 #    "activate_all_bananaports": ActivateAllBananaports,

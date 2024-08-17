@@ -7,15 +7,16 @@ import threading
 # sys.path.append('./worlds/dk64/DK64R/')
 
 from BaseClasses import Item, MultiWorld, Tutorial, ItemClassification
-from .Items import DK64Item, ItemData, full_item_table, setup_items
+from worlds.dk64.DK64R.randomizer.SettingStrings import decrypt_settings_string_enum
+from .Items import DK64Item, full_item_table, setup_items
 from .Options import GenerateDK64Options, dk64_options
-from .Regions import DK64Location, all_locations, create_regions, connect_regions
+from .Regions import all_locations, create_regions, connect_regions
 from .Rules import set_rules
 from worlds.AutoWorld import WebWorld, World
 import Patch
 from .Logic import LogicVarHolder
-from dk64r.randomizer.Spoiler import Spoiler
-from dk64r.randomizer.Settings import Settings
+from worlds.dk64.DK64R.randomizer.Spoiler import Spoiler
+from worlds.dk64.DK64R.randomizer.Settings import Settings
 
 class DK64Web(WebWorld):
     theme = "jungle"
@@ -46,16 +47,18 @@ class DK64World(World):
     item_name_to_id = {name: data.code for name, data in full_item_table.items()}
     location_name_to_id = all_locations
 
-    web = DK64Web()    
+    web = DK64Web()
 
-    
+
     def __init__(self, multiworld: MultiWorld, player: int):
         self.rom_name_available_event = threading.Event()
         super().__init__(multiworld, player)
-        settings_dict = {}
+        self.settings_string = "bKEHiRorPE1eb3qyhA0QHo6RYwCG4gy1iEF6+fwDZ4+GE0c7upXsrMzimzq2L4U4H1QOCIZEJUtjXPhGnj8Ro9dpcviFOWItOCFAUekCRNGeKvgKQU9fgSQDJooTRRVGQXWWCgDoAQYAdQEDgDsAwgAdwIEgDwBQoAeQMFgD0Bww8UIagPbIUiVFQzkSnUy5JMN4EcHSLSLgZ+ioiwCJiKAK9a45G7Vf77IoHMWIoATZlUYkiwAJjAAJjQAHjgAHjwAFkAAFkQADkgADkwADlAADU5coclwqdMISQRfQJyQYYSpmNpjBxaFpuK5YFaHLYaE4sMhgJgwIxoUxxTSeRSZEalAFUAlwMMKTCcIQgJCgsNpSIrDxARIywTFBUkLRcYGSUuGxwdJi8fICEnKA"
+        settings_dict = decrypt_settings_string_enum(self.settings_string)
         settings = Settings(settings_dict)
         spoiler = Spoiler(settings)
         self.logic_holder = LogicVarHolder(spoiler, self)
+        self.item_pool_size = 0
 
     @classmethod
     def stage_assert_generate(cls, multiworld: MultiWorld):
@@ -70,6 +73,7 @@ class DK64World(World):
         }
 
     def generate_early(self):
+        # handle starting moves?
         pass
 
     def create_regions(self) -> None:
