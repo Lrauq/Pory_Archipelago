@@ -46,45 +46,9 @@ full_item_table.update(event_table) # Temp for generating goal item
 
 def setup_items(world: World) -> typing.List[DK64Item]:
     item_table = []
-
-    world.item_pool_size = 0  # Must match the number of locations created
-    if not world.logic_holder.settings.shuffle_items:
-        raise Exception("DK64 Settings must enable the item randomizer.")
-    if DK64RTypes.Banana not in world.logic_holder.settings.shuffled_location_types:
-        raise Exception("DK64 Settings must shuffle GBs.")
-    world.item_pool_size = 161 - DK64RItemPoolUtility.TOUGH_BANANA_COUNT
-    if DK64RTypes.Shop not in world.logic_holder.settings.shuffled_location_types:
-        raise Exception("DK64 Settings must shuffle moves.")
-    world.item_pool_size += len(DK64RItemPoolUtility.AllKongMoves()) + len(DK64RItemPoolUtility.JunkSharedMoves)
-    if DK64RTypes.ToughBanana in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += DK64RItemPoolUtility.TOUGH_BANANA_COUNT
-    if DK64RTypes.Blueprint in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 40
-    if DK64RTypes.Fairy in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 20
-    if DK64RTypes.Key in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 8
-    if DK64RTypes.Crown in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 10
-    if DK64RTypes.Coin in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 2
-    if DK64RTypes.TrainingBarrel in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 4
-    if DK64RTypes.Kong in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 5
-    if DK64RTypes.Medal in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 40
-    if DK64RTypes.Shockwave in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 2
-    if DK64RTypes.Bean in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 1
-    if DK64RTypes.Pearl in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 5
-    if DK64RTypes.RainbowCoin in world.logic_holder.settings.shuffled_location_types:
-        world.item_pool_size += 16
-    # might not even use this guy, might be able to sort this out another way
-
-    all_shuffled_items = DK64RItemPoolUtility.GetItemsNeedingToBeAssumed(world.logic_holder.settings, [], [])
+    all_shuffled_items = DK64RItemPoolUtility.GetItemsNeedingToBeAssumed(world.logic_holder.settings, [DK64RTypes.ToughBanana], [])
+    all_shuffled_items.extend(DK64RItemPoolUtility.ToughGoldenBananaItems())  # This weirdness is a 3.0 bug where Tough GBs are counted twice in the above method
+    all_shuffled_items.extend(DK64RItemPoolUtility.JunkSharedMoves)
    
     for seed_item in all_shuffled_items:
         item = DK64RItem.ItemList[seed_item]
@@ -92,13 +56,17 @@ def setup_items(world: World) -> typing.List[DK64Item]:
             classification = ItemClassification.filler
         elif item.type in [DK64RItems.FakeItem]:
             classification = ItemClassification.trap
-        elif item.playthrough == True:
+        elif item.playthrough == True or item.type == DK64RTypes.Blueprint:  # The playthrough tag doesn't quite 1-to-1 map to Archipelago's "progression" type
             classification = ItemClassification.progression
         else:
             classification = ItemClassification.useful
+        if seed_item == DK64RItems.HideoutHelmKey and world.logic_holder.settings.key_8_helm:
+            world.multiworld.get_location("The End of Helm", world.player).place_locked_item(DK64Item("Key 8", ItemClassification.progression, full_item_table[item.name], world.player))
         item_table.append(DK64Item(item.name, classification, full_item_table[item.name], world.player))
     
-    # if there's too many locations and not enough items, add some junk?
+    # if there's too many locations and not enough items, add some junk? TBD
+    print("projected available locations: " + str(world.logic_holder.location_pool_size))
+    print("projected items to place: " + str(len(item_table)))
 
     # Example of accessing Option result
     if world.options.goal == "krool":

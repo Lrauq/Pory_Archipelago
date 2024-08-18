@@ -4,7 +4,7 @@ import typing
 import math
 import threading
 
-# sys.path.append('./worlds/dk64/DK64R/')
+sys.path.append('./worlds/dk64/DK64R/')
 
 from BaseClasses import Item, MultiWorld, Tutorial, ItemClassification
 from worlds.dk64.DK64R.randomizer.SettingStrings import decrypt_settings_string_enum
@@ -53,12 +53,11 @@ class DK64World(World):
     def __init__(self, multiworld: MultiWorld, player: int):
         self.rom_name_available_event = threading.Event()
         super().__init__(multiworld, player)
-        self.settings_string = "bKEHiRorPE1eb3qyhA0QHo6RYwCG4gy1iEF6+fwDZ4+GE0c7upXsrMzimzq2L4U4H1QOCIZEJUtjXPhGnj8Ro9dpcviFOWItOCFAUekCRNGeKvgKQU9fgSQDJooTRRVGQXWWCgDoAQYAdQEDgDsAwgAdwIEgDwBQoAeQMFgD0Bww8UIagPbIUiVFQzkSnUy5JMN4EcHSLSLgZ+ioiwCJiKAK9a45G7Vf77IoHMWIoATZlUYkiwAJjAAJjQAHjgAHjwAFkAAFkQADkgADkwADlAADU5coclwqdMISQRfQJyQYYSpmNpjBxaFpuK5YFaHLYaE4sMhgJgwIxoUxxTSeRSZEalAFUAlwMMKTCcIQgJCgsNpSIrDxARIywTFBUkLRcYGSUuGxwdJi8fICEnKA"
+        self.settings_string = "bKEHiRorPE1eb3qyhA0QHo6RYwCG4gy1iEF6+fwDZ4+GE0c7upXsrMzimzq2L4U4H1QOCIZEJUtjXPhGnj8Ro9dpcviFOWItOCFAB2j0gSJozxV8BSCnr8CSAZNFCaKKoyC6ywUAdACDADqAgcAdgGEADuBAkAeAKFADyBgsAegOGHihDUB7ZCkSoqGciU6mXJJhvAjg6RaRcDP0VEWARMRQBXrXHI3ar/fZFA5ixFACbMqjEkWABMYABMaAA8cAA8eAAsgAAsiAAckAAcmAAcoAAanLlDkuFTphCSCL6BOSDDCVMxtMZaFpuK5YFaHLYaE4sMhgJgwIxoUxxTSeRSZEalAFUAlwMMKTCcIQgJCgsNpSIrDxARIywTFBUkLRcYGSUuGxwdJi8fICEnKA"
         settings_dict = decrypt_settings_string_enum(self.settings_string)
         settings = Settings(settings_dict)
         spoiler = Spoiler(settings)
         self.logic_holder = LogicVarHolder(spoiler, self)
-        self.item_pool_size = 0
 
     @classmethod
     def stage_assert_generate(cls, multiworld: MultiWorld):
@@ -89,7 +88,7 @@ class DK64World(World):
     def generate_basic(self):
         connect_regions(self, self.logic_holder)
 
-        self.multiworld.get_location("Victory", self.player).place_locked_item(DK64Item("Victory", ItemClassification.progression, 0x000000, self.player)) # TEMP
+        self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("Banana Hoard", ItemClassification.progression, 0x000000, self.player)) # TEMP?
 
     def generate_output(self, output_directory: str):
         try:

@@ -22,19 +22,18 @@ class Goal(Choice):
 def GenerateDK64Options() -> typing.Dict[str, type(Option)]:
     dk64_options: typing.Dict[str, type(Option)] = {}
 
-    for setting_id, setting_type in SettingsStringTypeMap.items():
+    # for setting_id, setting_type in SettingsStringTypeMap.items():
 
-        if setting_type == SettingsStringDataType.bool:
-            new_option = type(str(setting_id).split(".")[1], (Toggle, ), { "display_name": str(setting_id).split(".")[1] })
-            new_option.__doc__ = setting_type.__doc__
-            dk64_options[str(setting_id).split(".")[1]] = new_option
+    #     if setting_type == SettingsStringDataType.bool:
+    #         new_option = type(str(setting_id).split(".")[1], (Toggle, ), { "display_name": str(setting_id).split(".")[1] })
+    #         new_option.__doc__ = setting_type.__doc__
+    #         dk64_options[str(setting_id).split(".")[1]] = new_option
 
     dk64_options["goal"] = Goal
     return dk64_options
 
 
 dk64_options: typing.Dict[str, type(Option)] = {
-    "settings_string": ""
 #    "death_link": DeathLink,
 #    "goal": Goal,
 #    "activate_all_bananaports": ActivateAllBananaports,

@@ -35,6 +35,7 @@ from worlds.dk64.DK64R.randomizer.Enums.Settings import (
     BananaportRando,
     DamageAmount,
     FasterChecksSelected,
+    GalleonWaterSetting,
     GlitchesSelected,
     HardModeSelected,
     HelmDoorItem,
@@ -85,6 +86,9 @@ class LogicVarHolder:
         # One Archipelago-specific exception - assuming infinite coins shortcuts a few price-related functions that we don't care about
         # In Archipelago, shops are free cause we're not tackling coin logic yet
         self.assumeInfiniteCoins = True
+        
+        # Archipelago really wants the number of locations to match the number of items. Keep track of how many locations we've made here
+        self.location_pool_size = 0
 
         self.startkong = self.settings.starting_kong
         # Glitch Logic
@@ -219,7 +223,8 @@ class LogicVarHolder:
 
         self.Hints = []
 
-        self.SpecialLocationsReached = []
+        # SpecialLocationsReached are only utilized for warp events for TA purposes, and can be therefore bypassed in Archipelago
+        self.SpecialLocationsReached = [Locations.AztecDonkeyQuicksandCave, Locations.CavesTinyCaveBarrel, Locations.GalleonDiddyGoldTower, Locations.JapesDiddyMountain]
 
         # Set key events for keys which are given to the player at start of game
         keyEvents = [
@@ -318,21 +323,28 @@ class LogicVarHolder:
             if item_name.startswith("Collectible CBs"):
                 for i in range(item_count):
                     cbArchItems.append(item_name)
-            elif item_name.startswith("Event "):
+            elif item_name.startswith("Event, "):
                 eventArchItems.append(item_name)
             else:
-                corresponding_item = [item for item in ItemList.values() if item.name == item_name]
+                corresponding_items = [item_id for item_id in ItemList.keys() if ItemList[item_id].name == item_name]
+                corresponding_item_id = corresponding_items[0]
                 for i in range(item_count):
-                    ownedItems.append(corresponding_item)
+                    ownedItems.append(corresponding_item_id)
 
         # We update Events before updating items because we need to know the status of a few events for some items
         for item_name in eventArchItems:
             # Event names are carefully named in the following format:
             # index 0: "Event" - needed to identify this as an Event item
             # index 1: the Events enum name as a string
-            item_data = item_name.split(" ")
+            item_data = item_name.split(", ")
             event = Events[item_data[1]]
             self.AddEvent(event)
+        # Galleon water needs slightly more care to account for the initial state of Galleon water
+        # dk64randomizer.com handles this with Events in Galleon, but AP needs a solution that doesn't litter event locations in the world
+        if self.settings.galleon_water_internal == GalleonWaterSetting.lowered:
+            self.AddEvent(Events.WaterLowered)
+        if self.settings.galleon_water_internal == GalleonWaterSetting.raised:
+            self.AddEvent(Events.WaterRaised)
 
         self.Update(ownedItems)
 
@@ -513,6 +525,9 @@ class LogicVarHolder:
 
     def checkBarrier(self, check: RemovedBarriersSelected):
         """Determine whether a barrier has been removed by the removed barriers setting."""
+        # # This AP-specific exception covers the case where we enter the Worm Area from the wrong side
+        if check == RemovedBarriersSelected.forest_green_tunnel and Events.WormGatesOpened in self.Events:
+            return True
         return IsItemSelected(self.settings.remove_barriers_enabled, self.settings.remove_barriers_selected, check)
 
     def canOpenLlamaTemple(self):
