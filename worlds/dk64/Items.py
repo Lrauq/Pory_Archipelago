@@ -62,9 +62,15 @@ def setup_items(world: World) -> typing.List[DK64Item]:
             classification = ItemClassification.useful
         if seed_item == DK64RItems.HideoutHelmKey and world.logic_holder.settings.key_8_helm:
             world.multiworld.get_location("The End of Helm", world.player).place_locked_item(DK64Item("Key 8", ItemClassification.progression, full_item_table[item.name], world.player))
+            world.logic_holder.location_pool_size -= 1
         item_table.append(DK64Item(item.name, classification, full_item_table[item.name], world.player))
-    
-    # if there's too many locations and not enough items, add some junk? TBD
+
+    # if there's too many locations and not enough items, add some junk? Amount TBD, not sure how to precisely calculate this
+    junk_item = DK64RItem.ItemList[DK64RItems.JunkMelon]
+    if world.logic_holder.location_pool_size - len(item_table) - 1 < 0:
+        raise Exception
+    for i in range(world.logic_holder.location_pool_size - len(item_table) - 1):  # The last 1 is for the Banana Hoard
+        item_table.append(DK64Item(junk_item.name, ItemClassification.filler, full_item_table[junk_item.name], world.player))
     print("projected available locations: " + str(world.logic_holder.location_pool_size))
     print("projected items to place: " + str(len(item_table)))
 
