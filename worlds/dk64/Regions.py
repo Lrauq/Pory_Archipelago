@@ -186,15 +186,33 @@ def hasDK64RTransition(state: CollectionState, logic: LogicVarHolder, exit: Tran
 
 
 def hasDK64RLocation(state: CollectionState, logic: LogicVarHolder, location: LocationLogic):
+    try:
+        quick_success = location.logic(None)
+        if quick_success:
+            return True
+    except:
+        pass
     logic.UpdateFromArchipelagoItems(state)
     return location.logic(logic)
 
 
 def hasDK64RCollectible(state: CollectionState, logic: LogicVarHolder, collectible: Collectible):
+    try:
+        quick_success = collectible.logic(None)
+        if quick_success:
+            return True
+    except:
+        pass
     logic.UpdateFromArchipelagoItems(state)
     return collectible.logic(logic)
 
 
 def hasDK64REvent(state: CollectionState, logic: LogicVarHolder, event: Event):
+    try:
+        quick_success = event.logic(None)
+        if quick_success:
+            return True
+    except:
+        pass
     logic.UpdateFromArchipelagoItems(state)
     return event.logic(logic)

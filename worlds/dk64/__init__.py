@@ -83,7 +83,7 @@ class DK64World(World):
         self.multiworld.itempool += itempool
 
     def set_rules(self):
-        set_rules(self.multiworld, self.player, self.logic_holder)
+        set_rules(self.multiworld, self.player)
 
     def generate_basic(self):
         connect_regions(self, self.logic_holder)
