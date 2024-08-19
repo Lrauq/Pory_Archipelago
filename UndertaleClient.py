@@ -27,14 +27,14 @@ class UndertaleCommandProcessor(ClientCommandProcessor):
             self.ctx.syncing = True
 
     def _cmd_patch(self):
-        """Patch the game."""
+        """Patch the game. Only use this command if /auto_patch fails."""
         if isinstance(self.ctx, UndertaleContext):
             os.makedirs(name=os.path.join(os.getcwd(), "Undertale"), exist_ok=True)
             self.ctx.patch_game()
             self.output("Patched.")
 
     def _cmd_savepath(self, directory: str):
-        """Redirect to proper save data folder. (Use before connecting!)"""
+        """Redirect to proper save data folder. This is necessary for Linux users to use before connecting."""
         if isinstance(self.ctx, UndertaleContext):
             self.ctx.save_game_folder = directory
             self.output("Changed to the following directory: " + self.ctx.save_game_folder)
@@ -67,7 +67,7 @@ class UndertaleCommandProcessor(ClientCommandProcessor):
                 self.output("Patching successful!")
 
     def _cmd_online(self):
-        """Makes you no longer able to see other Undertale players."""
+        """Toggles seeing other Undertale players."""
         if isinstance(self.ctx, UndertaleContext):
             self.ctx.update_online_mode(not ("Online" in self.ctx.tags))
             if "Online" in self.ctx.tags:
@@ -247,8 +247,8 @@ async def process_undertale_cmd(ctx: UndertaleContext, cmd: str, args: dict):
             with open(os.path.join(ctx.save_game_folder, filename), "w") as f:
                 toDraw = ""
                 for i in range(20):
-                    if i < len(str(ctx.item_names[l.item])):
-                        toDraw += str(ctx.item_names[l.item])[i]
+                    if i < len(str(ctx.item_names.lookup_in_slot(l.item))):
+                        toDraw += str(ctx.item_names.lookup_in_slot(l.item))[i]
                     else:
                         break
                 f.write(toDraw)
