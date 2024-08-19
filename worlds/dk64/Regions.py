@@ -5,12 +5,14 @@ from worlds.AutoWorld import World
 
 from worlds.dk64.DK64R.randomizer.Enums.Collectibles import Collectibles
 from worlds.dk64.DK64R.randomizer.Enums.Events import Events
+from worlds.dk64.DK64R.randomizer.Enums.Items import Items
+from worlds.dk64.DK64R.randomizer.Enums.Kongs import Kongs
 from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
 from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
 from worlds.dk64.DK64R.randomizer.Enums.Settings import HelmSetting
 from worlds.dk64.DK64R.randomizer.Enums.Types import Types
 from worlds.dk64.DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
-from worlds.dk64.DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront
+from worlds.dk64.DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
 from worlds.dk64.Items import DK64Item
 from worlds.generic.Rules import set_rule
 from .Logic import LogicVarHolder
@@ -87,6 +89,9 @@ def create_regions(multiworld: MultiWorld, player: int, logic_holder: LogicVarHo
         if region_id in all_collectible_regions.keys():
             collectibles = [col for col in all_collectible_regions[region_id] if col.type in (Collectibles.bunch, Collectibles.banana, Collectibles.balloon)]
         events = [event for event in region_obj.events]
+        # if region_obj.level == Levels.Shops:
+        #     multiworld.regions.append(create_shop_region(multiworld, player, region_id.name, region_obj, location_logics, logic_holder))
+        # else:
         multiworld.regions.append(create_region(multiworld, player, region_id.name, region_obj.level, location_logics, collectibles, events, logic_holder))
 
 
@@ -107,11 +112,22 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
             # If the location is not shuffled, lock in the default item on the location
             if location_logic.id != Locations.BananaHoard and location_obj.type not in logic_holder.settings.shuffled_location_types and location_obj.default is not None:
                 location.address = None
-                location.place_locked_item(DK64Item(DK64RItem.ItemList[location_obj.default].name, ItemClassification.progression, None, player))
+                location.place_locked_item(DK64Item(location_obj.default.name, ItemClassification.progression, None, player))
             # Otherwise, this is a location that can have items in it, and counts towards the number of locations available for items
             else:
                 logic_holder.location_pool_size += 1
-            set_rule(location, lambda state, location_logic=location_logic: hasDK64RLocation(state, logic_holder, location_logic))
+            # Quickly test and see if we can reach this location with zero items
+            quick_success = False
+            try:
+                quick_success = location.logic(None)
+            except:
+                pass
+            # If we can, we can greatly simplify the logic at this location
+            if quick_success:
+                set_rule(location, lambda state: True)
+            # Otherwise we have to work our way through the logic proper
+            else:
+                set_rule(location, lambda state, location_logic=location_logic: hasDK64RLocation(state, logic_holder, location_logic))
             new_region.locations.append(location)
 
     collectible_id = 0
@@ -119,7 +135,17 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
         collectible_id += 1
         location_name = region_name + " Collectible " + str(collectible_id) +  ": " + collectible.kong.name + " " + collectible.type.name
         location = DK64Location(player, location_name, None, new_region)
-        set_rule(location, lambda state, collectible=collectible: hasDK64RCollectible(state, logic_holder, collectible))
+        # Quickly test and see if we can reach this location with zero items
+        quick_success = False
+        try:
+            quick_success = collectible.logic(None)
+        except:
+            pass
+        # If we can, we can greatly simplify the logic at this location
+        if quick_success:
+            set_rule(location, lambda state: True)
+        else:
+            set_rule(location, lambda state, collectible=collectible: hasDK64RCollectible(state, logic_holder, collectible))
         quantity = collectible.amount
         if collectible.type == Collectibles.bunch:
             quantity *= 5
@@ -138,10 +164,57 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
             continue
         location_name = region_name + " Event " + event.name.name
         location = DK64Location(player, location_name, None, new_region)
-        set_rule(location, lambda state, event=event: hasDK64REvent(state, logic_holder, event))
+        # Quickly test and see if we can reach this location with zero items
+        quick_success = False
+        try:
+            quick_success = event.logic(None)
+        except:
+            pass
+        # If we can, we can greatly simplify the logic at this location
+        if quick_success:
+            set_rule(location, lambda state: True)
+        else:
+            set_rule(location, lambda state, event=event: hasDK64REvent(state, logic_holder, event))
         location.place_locked_item(DK64Item("Event, " + event.name.name, ItemClassification.progression, None, player))
         new_region.locations.append(location)
     
+    return new_region
+
+# CURRENTLY UNUSED - for some reason some Lanky shops are inaccessible??
+def create_shop_region(multiworld: MultiWorld, player: int, region_name: str, region_obj: DK64Region, location_logics: typing.List[LocationLogic], logic_holder: LogicVarHolder) -> Region:
+    # Shop regions have relatively straightforward logic that can be streamlined for performance purposes
+    new_region = Region(region_name, player, multiworld)
+    # Snide and his blueprint locations are one-to-one every time
+    if "Snide" in region_name:
+        blueprint_id = Items.JungleJapesDonkeyBlueprint
+        for item in range(40):
+            blueprint_obj = DK64RItem.ItemList[blueprint_id]
+            location_name = "Turn In " + blueprint_obj.name
+            loc_id = all_locations.get(location_name, 0)
+            location = DK64Location(player, location_name, loc_id, new_region)
+            set_rule(location, lambda state, blueprint_name=blueprint_obj.name: state.has(blueprint_name, player))
+            location.place_locked_item(DK64Item(blueprint_obj.name, ItemClassification.progression, None, player))
+            new_region.locations.append(location)
+            blueprint_id += 1
+    # The one special child here is Cranky Generic, home of Jetpac, the only shop location with any relevant logic
+    elif region_name == "Cranky Generic":
+        location = DK64Location(player, "Jetpac", all_locations.get("Jetpac", 0), new_region)
+        set_rule(location, lambda state, location_logic=location_logics[0]: hasDK64RLocation(state, logic_holder, location_logic))
+        new_region.locations.append(location)
+        logic_holder.location_pool_size += 1
+    # All other shops are free because we are *not* touching shop logic with a 20000000000 ft pole (yet)
+    else:
+        for location_logic in location_logics:
+            location_obj = DK64RLocation.LocationListOriginal[location_logic.id]
+            if location_obj.kong == Kongs.any:
+                continue  # We need to eliminate shared shop locations so shops don't have both a shared item and Kong items
+            loc_id = all_locations.get(location_obj.name, 0)
+            location = DK64Location(player, location_obj.name, loc_id, new_region)
+            required_kong_name = location_obj.kong.name.title()
+            set_rule(location, lambda state, required_kong_name=required_kong_name: state.has(required_kong_name, player))
+            new_region.locations.append(location)
+            logic_holder.location_pool_size += 1
+
     return new_region
 
 
@@ -159,7 +232,17 @@ def connect_regions(world: World, logic_holder: LogicVarHolder):
     for region_id, region_obj in all_logic_regions.items():
         for exit in region_obj.exits:
             try:
-                converted_logic = lambda state, exit=exit: hasDK64RTransition(state, logic_holder, exit)
+                # Quickly test and see if we can pass this exit with zero items
+                quick_success = False
+                try:
+                    quick_success = exit.logic(None)
+                except:
+                    pass
+                # If we can, we can greatly simplify the logic for this exit
+                if quick_success:
+                    converted_logic = lambda state: True
+                else:
+                    converted_logic = lambda state, exit=exit: hasDK64RTransition(state, logic_holder, exit)
                 connect(world, region_id.name, exit.dest.name, converted_logic)
             except Exception:
                 pass
@@ -186,33 +269,15 @@ def hasDK64RTransition(state: CollectionState, logic: LogicVarHolder, exit: Tran
 
 
 def hasDK64RLocation(state: CollectionState, logic: LogicVarHolder, location: LocationLogic):
-    try:
-        quick_success = location.logic(None)
-        if quick_success:
-            return True
-    except:
-        pass
     logic.UpdateFromArchipelagoItems(state)
     return location.logic(logic)
 
 
 def hasDK64RCollectible(state: CollectionState, logic: LogicVarHolder, collectible: Collectible):
-    try:
-        quick_success = collectible.logic(None)
-        if quick_success:
-            return True
-    except:
-        pass
     logic.UpdateFromArchipelagoItems(state)
     return collectible.logic(logic)
 
 
 def hasDK64REvent(state: CollectionState, logic: LogicVarHolder, event: Event):
-    try:
-        quick_success = event.logic(None)
-        if quick_success:
-            return True
-    except:
-        pass
     logic.UpdateFromArchipelagoItems(state)
     return event.logic(logic)

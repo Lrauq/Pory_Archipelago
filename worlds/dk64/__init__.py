@@ -88,7 +88,7 @@ class DK64World(World):
     def generate_basic(self):
         connect_regions(self, self.logic_holder)
 
-        self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("Banana Hoard", ItemClassification.progression, 0x000000, self.player)) # TEMP?
+        self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("BananaHoard", ItemClassification.progression, 0x000000, self.player)) # TEMP?
 
     def generate_output(self, output_directory: str):
         try:

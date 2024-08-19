@@ -326,8 +326,7 @@ class LogicVarHolder:
             elif item_name.startswith("Event, "):
                 eventArchItems.append(item_name)
             else:
-                corresponding_items = [item_id for item_id in ItemList.keys() if ItemList[item_id].name == item_name]
-                corresponding_item_id = corresponding_items[0]
+                corresponding_item_id = Items[item_name]
                 for i in range(item_count):
                     ownedItems.append(corresponding_item_id)
 
@@ -488,8 +487,9 @@ class LogicVarHolder:
 
     def GetCoins(self, kong):
         """Get Coin Total for a kong."""
-        self.UpdateCoins()
-        return self.Coins[kong]
+        # In Archipelago, we will assume infinite coins in all worlds - the only snag *might* be Arcade Round 2, but there is an uninterrupted straight running line from the Arcade to 3 DK coins.
+        # self.UpdateCoins()
+        return 1000  # self.Coins[kong]
 
     def CanSlamSwitch(self, level: Levels, default_requirement_level: int):
         """Determine whether the player can operate the necessary slam operation.
