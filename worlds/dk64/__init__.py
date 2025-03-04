@@ -53,7 +53,7 @@ class DK64World(World):
     def __init__(self, multiworld: MultiWorld, player: int):
         self.rom_name_available_event = threading.Event()
         super().__init__(multiworld, player)
-        self.settings_string = "bKEHiRorPE1eb3qyhA0QHo6RYwCG4gy1iEF6+fwDZ4+GE0c7upXsrMzimzq2L4U4H1QOCIZEJUtjXPhGnj8Ro9dpcviFOWItOCFAB2j0gSJozxV8BSCnr8CSAZNFCaKKoyC6ywUAdACDADqAgcAdgGEADuBAkAeAKFADyBgsAegOGHihDUB7ZCkSoqGciU6mXJJhvAjg6RaRcDP0VEWARMRQBXrXHI3ar/fZFA5ixFACbMqjEkWABMYABMaAA8cAA8eAAsgAAsiAAckAAcmAAcoAAanLlDkuFTphCSCL6BOSDDCVMxtMZaFpuK5YFaHLYaE4sMhgJgwIxoUxxTSeRSZEalAFUAlwMMKTCcIQgJCgsNpSIrDxARIywTFBUkLRcYGSUuGxwdJi8fICEnKA"
+        self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKi4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
         settings_dict = decrypt_settings_string_enum(self.settings_string)
         settings = Settings(settings_dict)
         spoiler = Spoiler(settings)

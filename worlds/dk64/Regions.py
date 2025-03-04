@@ -9,10 +9,12 @@ from worlds.dk64.DK64R.randomizer.Enums.Items import Items
 from worlds.dk64.DK64R.randomizer.Enums.Kongs import Kongs
 from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
 from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
-from worlds.dk64.DK64R.randomizer.Enums.Settings import HelmSetting
+from worlds.dk64.DK64R.randomizer.Enums.Regions import Regions
+from worlds.dk64.DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting
 from worlds.dk64.DK64R.randomizer.Enums.Types import Types
 from worlds.dk64.DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
 from worlds.dk64.DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
+from worlds.dk64.DK64R.randomizer.Patching.Library.Generic import IsItemSelected
 from worlds.dk64.Items import DK64Item
 from worlds.generic.Rules import set_rule
 from .Logic import LogicVarHolder
@@ -51,6 +53,7 @@ class DK64Location(Location):
 
 # Complete location table
 all_locations = {location.name: (BASE_ID + index) for index, location in enumerate(DK64RLocation.LocationListOriginal)}
+print("locations created")
 all_locations.update({"Victory": 0x00})  # Temp for generating goal location
 lookup_id_to_name: typing.Dict[int, str] = {id: name for name, id in all_locations.items()}
 
@@ -82,9 +85,31 @@ def create_regions(multiworld: MultiWorld, player: int, logic_holder: LogicVarHo
     menu_region = Region("Menu", player, multiworld)
     multiworld.regions.append(menu_region)
     
+    # # Print contents of all_locations
+    # print("All Locations:")
+    # for location_name, location_id in all_locations.items():
+    #     print(f"{location_name}: {location_id}")
+    
     for region_id in all_logic_regions:
         region_obj = all_logic_regions[region_id]
+        # Filtering out auxiliary locations is detrimental to glitch logic, but is necessary to ensure each location placed exactly once
         location_logics = [loc for loc in region_obj.locations if not loc.isAuxiliaryLocation]
+        # V1 LIMITATION: Helm must be skip_start
+        # Special exception time! The locations in HideoutHelmEntry cause more problems than they solve, and cannot exist in conjunction with other locations.
+        if region_obj.level == Levels.HideoutHelm:
+            # Carefully extract the duplicate Helm locations based on what Helm rooms are required per the settings.
+            # If the room is required, the HideoutHelmEntry region cannot have the locations (because you'll have to reach the room to complete the barrels)
+            # If the room is not required, the HideoutHelmKongRoom cannot have the locations (because they'll get completed by the Helm Entry Redirect)
+            if (region_id == Regions.HideoutHelmEntry and logic_holder.settings.helm_donkey) or (region_id == Regions.HideoutHelmDonkeyRoom and not logic_holder.settings.helm_donkey):
+                location_logics = [loc for loc in location_logics if loc.id not in (Locations.HelmDonkey1, Locations.HelmDonkey2)]
+            if (region_id == Regions.HideoutHelmEntry and logic_holder.settings.helm_diddy) or (region_id == Regions.HideoutHelmDiddyRoom and not logic_holder.settings.helm_diddy):
+                location_logics = [loc for loc in location_logics if loc.id not in (Locations.HelmDiddy1, Locations.HelmDiddy2)]
+            if (region_id == Regions.HideoutHelmEntry and logic_holder.settings.helm_lanky) or (region_id == Regions.HideoutHelmLankyRoom and not logic_holder.settings.helm_lanky):
+                location_logics = [loc for loc in location_logics if loc.id not in (Locations.HelmLanky1, Locations.HelmLanky2)]
+            if (region_id == Regions.HideoutHelmEntry and logic_holder.settings.helm_tiny) or (region_id == Regions.HideoutHelmTinyRoom and not logic_holder.settings.helm_tiny):
+                location_logics = [loc for loc in location_logics if loc.id not in (Locations.HelmTiny1, Locations.HelmTiny2)]
+            if (region_id == Regions.HideoutHelmEntry and logic_holder.settings.helm_chunky) or (region_id == Regions.HideoutHelmChunkyRoom and not logic_holder.settings.helm_chunky):
+                location_logics = [loc for loc in location_logics if loc.id not in (Locations.HelmChunky1, Locations.HelmChunky2)]
         collectibles = []
         if region_id in all_collectible_regions.keys():
             collectibles = [col for col in all_collectible_regions[region_id] if col.type in (Collectibles.bunch, Collectibles.banana, Collectibles.balloon)]
@@ -98,7 +123,11 @@ def create_regions(multiworld: MultiWorld, player: int, logic_holder: LogicVarHo
 def create_region(multiworld: MultiWorld, player: int, region_name: str, level: Levels, location_logics: typing.List[LocationLogic], collectibles: typing.List[Collectible], events: typing.List[Event], logic_holder: LogicVarHolder) -> Region:
     new_region = Region(region_name, player, multiworld)
 
-    if location_logics and region_name != "GameStart":  # Game start has no actual locations - starting moves are handled by Arch elsewhere
+    # Two special cases - GameStart doesn't need any locations, as AP will handle starting items instead
+    if location_logics and region_name != "GameStart": 
+        # And Isles Medals locations aren't real unless the setting is enabled.
+        if region_name == "DKIslesMedals" and not IsItemSelected(logic_holder.settings.cb_rando_enabled, logic_holder.settings.cb_rando_list_selected, Levels.DKIsles):
+            location_logics = []
         for location_logic in location_logics:
             location_obj = DK64RLocation.LocationListOriginal[location_logic.id]
             # Starting move locations and Kongs may be shuffled but their locations are not relevant ever due to item placement restrictions
@@ -107,7 +136,11 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
             # Dropsanity would otherwise flood the world with irrelevant locked locations, greatly slowing seed gen
             if location_obj.type == Types.Enemies and Types.Enemies not in logic_holder.settings.shuffled_location_types:
                 continue
-            loc_id = all_locations.get(location_obj.name, 0)
+            # V1 LIMITATION: Shared shops cannot exist because we need the space in shops to guarantee enough locations for every item
+            # Because there's no shared shops, this may mean shared potions can end up in Kong shops. This is fine.
+            if location_obj.type == Types.Shop and location_obj.kong == Kongs.any:
+                continue
+            loc_id = all_locations.get(location_logic.id.name, 0)
             location = DK64Location(player, location_obj.name, loc_id, new_region)
             # If the location is not shuffled, lock in the default item on the location
             if location_logic.id != Locations.BananaHoard and location_obj.type not in logic_holder.settings.shuffled_location_types and location_obj.default is not None:
@@ -126,9 +159,11 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
             if quick_success:
                 set_rule(location, lambda state: True)
             # Otherwise we have to work our way through the logic proper
+            # V1 LIMITATION: this will ignore minigame logic, so bonus barrels and Helm barrels must be autocompleted
             else:
                 set_rule(location, lambda state, location_logic=location_logic: hasDK64RLocation(state, logic_holder, location_logic))
             new_region.locations.append(location)
+            # print("Adding location: " + location_obj.name + " | " + str(location_obj.type) + " | " + str(location_obj.kong) + " | " + str(loc_id))
 
     collectible_id = 0
     for collectible in collectibles:
@@ -152,13 +187,35 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
         elif collectible.type == Collectibles.balloon:
             quantity *= 10
         location.place_locked_item(DK64Item("Collectible CBs, " + collectible.kong.name + ", " + level.name + ", " + str(quantity), ItemClassification.progression, None, player))
+        print("Collectible CBs, " + collectible.kong.name + ", " + level.name + ", " + str(quantity))
         new_region.locations.append(location)
     
     for event in events:
         # Some events don't matter due to Archipelago settings
+        # Entering levels in weird spots can require a number of pre-completed events to be handled in Game Start
+        # We need to filter out any that will return False (because they will never not return False)
+        # V1 LIMITATION: We're not filtering out auto key turn ins, so that setting must be on (not really a problem for basically anyone)
+        if region_name == "GameStart" and event.name in (
+            Events.Night,
+            Events.Day,
+            Events.AztecIceMelted,
+            Events.TestingGateOpened,
+            Events.LighthouseGateOpened,
+            Events.ShipyardGateOpened,
+            Events.ActivatedLighthouse,
+            Events.ShipyardTreasureRoomOpened,
+            Events.WormGatesOpened,
+            Events.HollowTreeGateOpened,
+        ):
+            if not event.logic(logic_holder):
+                continue
         # Most water level altering events are inaccessible, only the one specifically in LighthouseUnderwater is accessible
         if event.name in (Events.WaterLowered, Events.WaterRaised) and region_name != "LighthouseUnderwater":
             continue
+        # This event only matters if you enter galleon via the Treasure Room and it spawns open
+        if event.name == Events.ShipyardTreasureRoomOpened and region_name == "TreasureRoom":
+            if not event.logic(logic_holder):
+                continue
         # This HelmFinished event is only necessary for skip all Helm
         if event.name == Events.HelmFinished and region_name == "HideoutHelmEntry" and logic_holder.settings.helm_setting != HelmSetting.skip_all:
             continue
