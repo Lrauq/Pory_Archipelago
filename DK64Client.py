@@ -24,7 +24,8 @@ class DK64Client:
     tracker = None
     game = None
     auth = None
-    recvd_checks: dict = {}
+    recvd_checks = []
+    players = None
 
     stop_bizhawk_spam = False
 
@@ -63,12 +64,10 @@ class DK64Client:
 
     async def wait_and_init_tracker(self):
         await self.wait_for_game_ready()
-        # self.tracker = LocationTracker(self.n64_client)
-        # self.item_tracker = ItemTracker(self.n64_client)
 
-    async def recved_item_from_ap(self, item_id, from_player, next_index):
+    async def recved_item_from_ap(self, item_id, item_name, from_player, next_index):
         # Don't allow getting an item until you've got your first check
-        if not self.tracker.has_start_item():
+        if not self.started_file():
             return
 
         # Spin until we either:
@@ -79,23 +78,28 @@ class DK64Client:
         while not (await self.is_victory()) and status != 0:
             time.sleep(0.1)
             status = self.safe_to_send()
-        # TODO: not sure why we need this
-        # item_id -= LABaseID
-        # The player name table only goes up to 100, so don't go past that
-        # Even if it didn't, the remote player _index_ byte is just a byte, so 255 max
-        if from_player > 100:
-            from_player = 100
+        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
 
-    #     next_index += 1
-    #     self.n64_client.write_memory(LAClientConstants.wLinkGiveItem, [
-    #                               item_id, from_player])
-    #     status |= 1
-    #     status = self.n64_client.write_memory(LAClientConstants.wLinkStatusBits, [status])
-    #     self.n64_client.write_memory(LAClientConstants.wRecvIndex, struct.pack(">H", next_index))
-    # self.setFlag(item_ids[14041094].get("flag_id"))
-    # memory_location = self.client.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-    # example_string = "ExampleString Multi Spaced\0"
-    # self.client.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, example_string)
+        next_index += 1
+        self.n64_client.write_u8(memory_location + DK64MemoryMap.counter_offset, [next_index])
+        item_sent_message = f"Received item {item_name} from {from_player}"
+        self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, item_sent_message)
+        if item_ids.get(item_id):
+            if item_ids[item_id].get("flag_id"):
+                self.setFlag(item_ids[item_id].get("flag_id"))
+            elif item_ids[item_id].get("fed_id"):
+                self.writeFedData(item_ids[item_id].get("fed_id"))
+            else:
+                logger.warning(f"Item {item_name} has no flag or fed id")
+
+    def writeFedData(self, fed_item):
+        pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+        current_fed_item = self.n64_client.read_u32(pointer + DK64MemoryMap.arch_items)
+        if current_fed_item != 0:
+            # If item is being processed, don't update
+            return
+        self.n64_client.write_u8(pointer + 0x7, fed_item)
+
     def check_safe_gameplay(self):
         current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
         next_gamemode = self.n64_client.read_u8(DK64MemoryMap.NextGamemode)
@@ -124,7 +128,7 @@ class DK64Client:
             cb(new_checks)
         return True
 
-    def has_start_item(self):
+    def started_file(self):
         # Checks to see if the file has been started
         return self.readFlag(0) == 1
 
@@ -136,6 +140,7 @@ class DK64Client:
         offset = DK64MemoryMap.EEPROM + byte_index
         val = self.n64_client.read_u8(offset)
         self.n64_client.write_u8(offset, [val | (1 << shift)])
+        return 1
 
     def readFlag(self, index: int) -> int:
         byte_index = index >> 3
@@ -156,18 +161,22 @@ class DK64Client:
         memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
         return self.n64_client.read_u8(memory_location + DK64MemoryMap.end_credits) == 1
 
+    def get_current_deliver_count(self):
+        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+        return self.n64_client.read_u8(memory_location + DK64MemoryMap.counter_offset)
+
     async def main_tick(self, item_get_cb, win_cb):
         await self.readChecks(item_get_cb)
         # await self.item_tracker.readItems()
         if await self.is_victory():
             await win_cb()
 
-        # recv_index = struct.unpack(">H", await self.n64_client.async_read_memory(LAClientConstants.wRecvIndex, 2))[0]
+        current_deliver_count = self.get_current_deliver_count()
 
-        # # Play back one at a time
-        # if recv_index in self.recvd_checks:
-        #     item = self.recvd_checks[recv_index]
-        #     await self.recved_item_from_ap(item.item, item.player, recv_index)
+        if len(self.recvd_checks) > current_deliver_count:
+            # Get the next item in recvd_checks
+            item = self.recvd_checks[current_deliver_count]
+            await self.recved_item_from_ap(item.item, item.name, item.player, current_deliver_count)
 
 
 class DK64Context(CommonContext):
@@ -253,10 +262,11 @@ class DK64Context(CommonContext):
             if self.slot is not None:
                 self.game = self.slot_info[self.slot].game
             self.slot_data = args.get("slot_data", {})
+            self.client.players = self.player_names
 
         if cmd == "ReceivedItems":
             for index, item in enumerate(args["items"], start=args["index"]):
-                self.client.recvd_checks[index] = item
+                self.client.recvd_checks.append(item)
 
     async def sync(self):
         sync_msg = [{"cmd": "Sync"}]
@@ -323,7 +333,6 @@ async def main():
 
     ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
 
-    # TODO: nothing about the lambda about has to be in a lambda
     ctx.la_task = create_task_log_exception(ctx.run_game_loop())
     if gui_enabled:
         ctx.run_gui()

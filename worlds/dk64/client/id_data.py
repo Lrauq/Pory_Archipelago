@@ -1,5 +1,5 @@
 """Location and item IDs for DK64."""
-location_ids = {
+location_names = {
     14041209: "Aztec Donkey Medal",
     14041210: "Aztec Diddy Medal",
     14041211: "Aztec Lanky Medal",
