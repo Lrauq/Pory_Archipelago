@@ -1,0 +1,339 @@
+import ModuleUpdate
+
+ModuleUpdate.update()
+
+import Utils
+
+if __name__ == "__main__":
+    Utils.init_logging("DK64Context", exception_logger="Client")
+
+import asyncio
+import colorama
+import time
+import typing
+from worlds.dk64.client.common import N64Exception, DK64MemoryMap, create_task_log_exception
+from worlds.dk64.client.pj64 import PJ64Client
+from worlds.dk64.client.id_data import item_ids
+
+from CommonClient import CommonContext, get_base_parser, gui_enabled, logger, server_loop
+from NetUtils import ClientStatus
+
+
+class DK64Client:
+    n64_client = PJ64Client()
+    tracker = None
+    game = None
+    auth = None
+    recvd_checks: dict = {}
+
+    stop_bizhawk_spam = False
+
+    async def wait_for_pj64(self):
+        clear_waiting_message = True
+        if not self.stop_bizhawk_spam:
+            logger.info("Waiting on connection to PJ64...")
+            self.stop_bizhawk_spam = True
+
+        while True:
+            try:
+                socket_connected = False
+                valid_rom = self.n64_client.validate_rom(self.game)
+                if self.n64_client.socket is not None and not socket_connected:
+                    logger.info("Connected to PJ64")
+                    socket_connected = True
+                while not valid_rom:
+                    if self.n64_client.socket is not None and not socket_connected:
+                        logger.info("Connected to PJ64")
+                        socket_connected = True
+                    if clear_waiting_message:
+                        logger.info("Waiting on valid ROM...")
+                        clear_waiting_message = False
+                    await asyncio.sleep(1.0)
+                    valid_rom = self.n64_client.validate_rom(self.game)
+                self.stop_bizhawk_spam = False
+                logger.info("PJ64 Connected to ROM!")
+                return
+            except (N64Exception, BlockingIOError, TimeoutError, ConnectionResetError):
+                await asyncio.sleep(1.0)
+                pass
+
+    async def reset_auth(self):
+        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+        self.n64_client.write_u8(memory_location + DK64MemoryMap.connection, [0xFF])
+
+    async def wait_and_init_tracker(self):
+        await self.wait_for_game_ready()
+        # self.tracker = LocationTracker(self.n64_client)
+        # self.item_tracker = ItemTracker(self.n64_client)
+
+    async def recved_item_from_ap(self, item_id, from_player, next_index):
+        # Don't allow getting an item until you've got your first check
+        if not self.tracker.has_start_item():
+            return
+
+        # Spin until we either:
+        # get an exception from a bad read (emu shut down or reset)
+        # beat the game
+        # the client handles the last pending item
+        status = self.safe_to_send()
+        while not (await self.is_victory()) and status != 0:
+            time.sleep(0.1)
+            status = self.safe_to_send()
+        # TODO: not sure why we need this
+        # item_id -= LABaseID
+        # The player name table only goes up to 100, so don't go past that
+        # Even if it didn't, the remote player _index_ byte is just a byte, so 255 max
+        if from_player > 100:
+            from_player = 100
+
+    #     next_index += 1
+    #     self.n64_client.write_memory(LAClientConstants.wLinkGiveItem, [
+    #                               item_id, from_player])
+    #     status |= 1
+    #     status = self.n64_client.write_memory(LAClientConstants.wLinkStatusBits, [status])
+    #     self.n64_client.write_memory(LAClientConstants.wRecvIndex, struct.pack(">H", next_index))
+    # self.setFlag(item_ids[14041094].get("flag_id"))
+    # memory_location = self.client.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+    # example_string = "ExampleString Multi Spaced\0"
+    # self.client.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, example_string)
+    def check_safe_gameplay(self):
+        current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
+        next_gamemode = self.n64_client.read_u8(DK64MemoryMap.NextGamemode)
+        return current_gamemode in [6, 0xD] and next_gamemode in [6, 0xD]
+
+    def safe_to_send(self):
+        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+        countdown_value = self.n64_client.read_u8(memory_location + DK64MemoryMap.safety_text_timer)
+        return countdown_value == 0
+
+    async def readChecks(self, cb):
+        new_checks = []
+        for check in self.remaining_checks:
+            addresses = [check.address]
+            if check.alternateAddress:
+                addresses.append(check.alternateAddress)
+            bytes = await self.gameboy.read_memory_cache(addresses)
+            if not bytes:
+                return False
+            check.set(list(bytes.values()))
+
+            if check.value:
+                self.remaining_checks.remove(check)
+                new_checks.append(check)
+        if new_checks:
+            cb(new_checks)
+        return True
+
+    def has_start_item(self):
+        # Checks to see if the file has been started
+        return self.readFlag(0) == 1
+
+    should_reset_auth = False
+
+    def setFlag(self, index: int) -> int:
+        byte_index = index >> 3
+        shift = index & 7
+        offset = DK64MemoryMap.EEPROM + byte_index
+        val = self.n64_client.read_u8(offset)
+        self.n64_client.write_u8(offset, [val | (1 << shift)])
+
+    def readFlag(self, index: int) -> int:
+        byte_index = index >> 3
+        shift = index & 7
+        offset = DK64MemoryMap.EEPROM + byte_index
+        val = self.n64_client.read_u8(offset)
+        return (val >> shift) & 1
+
+    async def wait_for_game_ready(self):
+        logger.info("Waiting on game to be in valid state...")
+        while not self.check_safe_gameplay():
+            if self.should_reset_auth:
+                self.should_reset_auth = False
+                raise N64Exception("Resetting due to wrong archipelago server")
+        logger.info("Game connection ready!")
+
+    async def is_victory(self):
+        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+        return self.n64_client.read_u8(memory_location + DK64MemoryMap.end_credits) == 1
+
+    async def main_tick(self, item_get_cb, win_cb):
+        await self.readChecks(item_get_cb)
+        # await self.item_tracker.readItems()
+        if await self.is_victory():
+            await win_cb()
+
+        # recv_index = struct.unpack(">H", await self.n64_client.async_read_memory(LAClientConstants.wRecvIndex, 2))[0]
+
+        # # Play back one at a time
+        # if recv_index in self.recvd_checks:
+        #     item = self.recvd_checks[recv_index]
+        #     await self.recved_item_from_ap(item.item, item.player, recv_index)
+
+
+class DK64Context(CommonContext):
+    tags = {"AP"}
+    game = "Donkey Kong 64"
+    la_task = None
+    found_checks = []
+    last_resend = time.time()
+
+    won = False
+
+    def __init__(self, server_address: typing.Optional[str], password: typing.Optional[str]) -> None:
+        self.client = DK64Client()
+        self.client.game = self.game.upper()
+        self.slot_data = {}
+
+        super().__init__(server_address, password)
+
+    def run_gui(self) -> None:
+        from kvui import GameManager
+
+        class DK64Manager(GameManager):
+            logging_pairs = [
+                ("Client", "Archipelago"),
+                ("Tracker", "Tracker"),
+            ]
+            base_title = "Archipelago Donkey Kong 64 Client"
+
+            def build(self):
+                b = super().build()
+                return b
+
+        self.ui = DK64Manager(self)
+        self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
+
+    async def send_checks(self):
+        message = [{"cmd": "LocationChecks", "locations": self.found_checks}]
+        await self.send_msgs(message)
+
+    had_invalid_slot_data: typing.Optional[bool] = None
+
+    def event_invalid_slot(self):
+        # The next time we try to connect, reset the game loop for new auth
+        self.had_invalid_slot_data = True
+        self.auth = None
+        # Don't try to autoreconnect, it will just fail
+        self.disconnected_intentionally = True
+        CommonContext.event_invalid_slot(self)
+
+    async def send_victory(self):
+        if not self.won:
+            message = [{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}]
+            logger.info("victory!")
+            await self.send_msgs(message)
+            self.won = True
+
+    def new_checks(self, item_ids):
+        self.found_checks += item_ids
+        create_task_log_exception(self.send_checks())
+
+    async def server_auth(self, password_requested: bool = False):
+        if password_requested and not self.password:
+            await super(DK64Context, self).server_auth(password_requested)
+
+        if self.had_invalid_slot_data:
+            # We are connecting when previously we had the wrong ROM or server - just in case
+            # re-read the ROM so that if the user had the correct address but wrong ROM, we
+            # allow a successful reconnect
+            self.client.should_reset_auth = True
+            self.had_invalid_slot_data = False
+
+        while self.client.auth == None:
+            await asyncio.sleep(0.1)
+
+            # Just return if we're closing
+            if self.exit_event.is_set():
+                return
+        self.auth = self.client.auth
+        await self.send_connect()
+
+    def on_package(self, cmd: str, args: dict):
+        if cmd == "Connected":
+            if self.slot is not None:
+                self.game = self.slot_info[self.slot].game
+            self.slot_data = args.get("slot_data", {})
+
+        if cmd == "ReceivedItems":
+            for index, item in enumerate(args["items"], start=args["index"]):
+                self.client.recvd_checks[index] = item
+
+    async def sync(self):
+        sync_msg = [{"cmd": "Sync"}]
+        await self.send_msgs(sync_msg)
+
+    async def run_game_loop(self):
+        async def victory():
+            await self.send_victory()
+
+        def on_item_get(dk64_checks):
+            return
+            # TODO: implement this
+            # checks = [item_ids[check.id] for check in dk64_checks]
+            # self.new_checks(checks)
+
+        # yield to allow UI to start
+        await asyncio.sleep(0)
+        while True:
+            await asyncio.sleep(0.1)
+
+            try:
+                if not self.client.stop_bizhawk_spam:
+                    logger.info("(Re)Starting game loop")
+                self.found_checks.clear()
+                # On restart of game loop, clear all checks, just in case we swapped ROMs
+                # this isn't totally neccessary, but is extra safety against cross-ROM contamination
+                self.client.recvd_checks.clear()
+                await self.client.wait_for_pj64()
+                await self.client.reset_auth()
+
+                # If we find ourselves with new auth after the reset, reconnect
+                if self.auth and self.client.auth != self.auth:
+                    # It would be neat to reconnect here, but connection needs this loop to be running
+                    logger.info("Detected new ROM, disconnecting...")
+                    await self.disconnect()
+                    continue
+                if not self.client.recvd_checks:
+                    await self.sync()
+
+                # await self.client.wait_and_init_tracker()
+                await asyncio.sleep(1.0)
+                while True:
+                    await self.client.reset_auth()
+                    await self.client.main_tick(on_item_get, victory)
+                    await asyncio.sleep(0.1)
+                    now = time.time()
+                    if self.last_resend + 5.0 < now:
+                        self.last_resend = now
+                        await self.send_checks()
+                    if self.client.should_reset_auth:
+                        self.client.should_reset_auth = False
+                        raise Exception("Resetting due to wrong archipelago server")
+            except (asyncio.TimeoutError, TimeoutError, ConnectionResetError):
+                await asyncio.sleep(1.0)
+
+
+async def main():
+    parser = get_base_parser(description="Donkey Kong 64 Client.")
+    parser.add_argument("--url", help="Archipelago connection url")
+
+    args = parser.parse_args()
+
+    ctx = DK64Context(args.connect, args.password)
+
+    ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
+
+    # TODO: nothing about the lambda about has to be in a lambda
+    ctx.la_task = create_task_log_exception(ctx.run_game_loop())
+    if gui_enabled:
+        ctx.run_gui()
+    ctx.run_cli()
+
+    await ctx.exit_event.wait()
+    await ctx.shutdown()
+
+
+if __name__ == "__main__":
+    colorama.init()
+    asyncio.run(main())
+    colorama.deinit()
