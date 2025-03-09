@@ -174,3 +174,7 @@ item_ids = {
     14041184: {"name": "Banana Hoard", "fed_id": None, "flag_id": None},
     14041088: {"name": "Victory", "fed_id": None, "flag_id": None},
 }
+
+
+# Automatically create another table that is the Name to the key
+item_names_to_id = {item_ids[key]["name"]: key for key in item_ids}
