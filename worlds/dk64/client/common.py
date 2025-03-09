@@ -1,4 +1,5 @@
 """Common classes and functions for the N64 client for DK64."""
+
 import asyncio
 from CommonClient import logger
 
@@ -7,6 +8,7 @@ class DK64MemoryMap:
     """
     DK64MemoryMap is a class that contains memory addresses and offsets used in the game Donkey Kong 64.
     """
+
     name_location = 0xD0A0A6F8
     memory_pointer = 0x807FFF1C
     counter_offset = 0x000
@@ -30,10 +32,12 @@ class N64Exception(Exception):
     Attributes:
         message (str): Explanation of the error.
     """
+
     pass
 
 
 all_tasks = set()
+
 
 def create_task_log_exception(awaitable) -> asyncio.Task:
     """
@@ -45,6 +49,7 @@ def create_task_log_exception(awaitable) -> asyncio.Task:
     The task will log any exceptions raised during its execution using the logger.
     It will also remove itself from the `all_tasks` set upon completion.
     """
+
     async def _log_exception(awaitable):
         try:
             return await awaitable
