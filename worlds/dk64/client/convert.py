@@ -6,5 +6,5 @@ for flag in location_flag_ids:
     value = location_flag_ids[flag]
     if location_names_to_id.get(value):
         print(value)
-        
+
 print(len(location_flag_ids))

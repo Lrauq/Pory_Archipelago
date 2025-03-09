@@ -1,4 +1,3 @@
-
 location_flag_ids = {
     1: "Japes Lanky Mad Maze Maul",
     2: "Japes Tiny Splish-Splash Salvage",
@@ -351,4 +350,3 @@ location_flag_ids = {
     # 736: "Isles Dirt: Banana Hoard",
     # 739: "Isles Dirt: Castle Lobby",
 }
-

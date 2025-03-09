@@ -1,4 +1,3 @@
-
 # AP_ID, Name, Flag Id (Hex int), Fed ID (standard int)
 item_ids = {
     14041089: {"name": "No Item", "fed_id": None, "flag_id": 0},

@@ -110,6 +110,46 @@ class DK64Client:
         countdown_value = self.n64_client.read_u8(memory_location + DK64MemoryMap.safety_text_timer)
         return countdown_value == 0
 
+    def _getShopStatus(self, p_type: int, p_value: int, p_kong: int) -> bool:
+        if p_type == 0xFFFF:
+            return False
+        if p_value == 0:
+            return False
+        if p_kong > 4:
+            p_kong = 0
+        kong_base = 0x807FC950 + (p_kong * 0x5E)
+        if p_type < 5:
+            val = self.n64_client.read_u8(kong_base + p_type)
+            if p_type in (1, 3):
+                # Slam, Ammo Belt
+                return val >= p_type
+            else:
+                return (val & (1 << (p_value - 1))) != 0
+        else:
+            return self.readFlag(p_value) != 0
+
+    def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None) -> bool:
+        # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3=bfi
+        # flag_index: as expected
+        if check_type == "shop":
+            if shop_index == 3:
+                header = 0x807FF6E8
+            else:
+                header = 0x807FF400 + (shop_index * 0xF0) + (kong_index * 0x30) + (level_index * 6)
+            purchase_type = self.n64_client.read_u16(header + 0)
+            purchase_value = self.n64_client.read_u16(header + 2)
+            purchase_kong = self.n64_client.read_u8(header + 4)
+            return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
+        else:
+            for flut_index in range(0x400):
+                raw_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index))
+                if raw_flag == flag_index:
+                    target_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index) + 2)
+                    return self.readFlag(target_flag) != 0
+                elif raw_flag == 0xFFFF:
+                    return self.readFlag(flag_index) != 0
+
+    # TODO: We need to modify this function to use getCheckStatus instead of the gameboy logic
     async def readChecks(self, cb):
         new_checks = []
         for check in self.remaining_checks:

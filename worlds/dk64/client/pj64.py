@@ -2,7 +2,7 @@
 
 import socket
 import json
-from client_options.common import N64Exception
+from dk64.client.common import N64Exception
 
 
 class PJ64Client:
@@ -84,6 +84,28 @@ class PJ64Client:
             self._connect()
             address = hex(address)
             self.socket.send(f"read u8 {address} 1".encode())
+            data = int(self.socket.recv(1024).decode())
+            return data
+        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
+            raise N64Exception("Connection refused or reset")
+
+    def read_u16(self, address):
+        """
+        Reads a 16-bit unsigned integer from the specified memory address.
+
+        Args:
+            address (int): The memory address to read from.
+
+        Returns:
+            int: The 16-bit unsigned integer read from the specified address.
+
+        Raises:
+            N64Exception: If the connection is refused, reset, or aborted.
+        """
+        try:
+            self._connect()
+            address = hex(address)
+            self.socket.send(f"read u16 {address} 2".encode())
             data = int(self.socket.recv(1024).decode())
             return data
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
