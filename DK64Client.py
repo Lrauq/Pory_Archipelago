@@ -148,6 +148,7 @@ class DK64Client:
                     return self.readFlag(target_flag) != 0
                 elif raw_flag == 0xFFFF:
                     return self.readFlag(flag_index) != 0
+        return False
 
     # TODO: We need to modify this function to use getCheckStatus instead of the gameboy logic
     async def readChecks(self, cb):
