@@ -173,6 +173,24 @@ item_ids = {
     14041219: {"name": "Castle Chunky Hint", "fed_id": None, "flag_id": 934},
     14041184: {"name": "Banana Hoard", "fed_id": None, "flag_id": None},
     14041088: {"name": "Victory", "fed_id": None, "flag_id": None},
+    14041314: {"name": "Treasure Chest Far Left Clam", "fed_id": None, "flag_id": 0xBA},
+    14041315: {"name": "Treasure Chest Center Clam", "fed_id": None, "flag_id": 0xBB},
+    14041316: {"name": "Treasure Chest Far Right Clam", "fed_id": None, "flag_id": 0xBC},
+    14041317: {"name": "Treasure Chest Close Right Clam", "fed_id": None, "flag_id": 0xBD},
+    14041318: {"name": "Treasure Chest Close Left Clam", "fed_id": None, "flag_id": 0xBE},
+    14041695: {"name": "Aztec Crate: On Llama Temple", "fed_id": None, "flag_id": 0x3ac},
+    14041696: {"name": "Aztec Crate: Near Gong Tower", "fed_id": None, "flag_id": 0x3ad},
+    14041691: {"name": "Aztec Crate: Llama Temple Entrance", "fed_id": None, "flag_id": 0x3ae},
+    14041701: {"name": "Castle Crate: Behind Mausoleum Entrance", "fed_id": None, "flag_id": 0x3af},
+    14041697: {"name": "Forest Crate: Near Owl Tree", "fed_id": None, "flag_id": 0x3b0},
+    14041699: {"name": "Forest Crate: Behind Dark Attic", "fed_id": None, "flag_id": 0x3b1},
+    14041698: {"name": "Forest Crate: Near Thornvine Barn", "fed_id": None, "flag_id": 0x3b2},
+    14041700: {"name": "Forest Crate: In Thornvine Barn", "fed_id": None, "flag_id": 0x3b3},
+    14041689: {"name": "Japes Crate: Behind the Mountain", "fed_id": None, "flag_id": 0x3b4},
+    14041690: {"name": "Japes Crate: In the Rambi Cave", "fed_id": None, "flag_id": 0x3b5},
+    14041692: {"name": "Factory Crate: Near Funky", "fed_id": None, "flag_id": 0x3b6},
+    14041693: {"name": "Factory Crate: Near Candy", "fed_id": None, "flag_id": 0x3b7},
+    14041694: {"name": "Galleon Crate: Near Cactus", "fed_id": None, "flag_id": 0x3b8}
 }
 
 
