@@ -13,7 +13,9 @@ import time
 import typing
 from worlds.dk64.client.common import N64Exception, DK64MemoryMap, create_task_log_exception
 from worlds.dk64.client.pj64 import PJ64Client
-from worlds.dk64.client.id_data import item_ids
+from worlds.dk64.client.items import item_ids, item_names_to_id
+from worlds.dk64.client.check_flag_locations import location_flag_ids
+from worlds.dk64.client.ap_check_ids import check_ids
 
 from CommonClient import CommonContext, get_base_parser, gui_enabled, logger, server_loop
 from NetUtils import ClientStatus
