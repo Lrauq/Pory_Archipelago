@@ -2,7 +2,7 @@
 
 import socket
 import json
-from dk64.client.common import N64Exception
+from worlds.dk64.client.common import N64Exception
 
 
 class PJ64Client:

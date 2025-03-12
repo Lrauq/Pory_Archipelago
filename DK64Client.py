@@ -147,6 +147,7 @@ class DK64Client:
                 raw_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index))
                 if raw_flag == flag_index:
                     target_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index) + 2)
+                    print(target_flag)
                     return self.readFlag(target_flag) != 0
                 elif raw_flag == 0xFFFF:
                     return self.readFlag(flag_index) != 0
@@ -166,10 +167,11 @@ class DK64Client:
                     flag_id = check.get("flag_id")
                     if not flag_id:
                         logger.error(f"Item {name} has no flag_id")
-                    check_status = self.getCheckStatus("location", flag_id)
-                    if check_status:
-                        self.remaining_checks.remove(id)
-                        new_checks.append(id)
+                    else:
+                        check_status = self.getCheckStatus("location", flag_id)
+                        if check_status:
+                            self.remaining_checks.remove(id)
+                            new_checks.append(id)
                 continue
             if not check:
                 continue
