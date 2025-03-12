@@ -151,15 +151,16 @@ class DK64Client:
             purchase_value = self.n64_client.read_u16(header + 2)
             purchase_kong = self.n64_client.read_u8(header + 4)
             return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
-        if self.flag_lookup is None:
-            self._build_flag_lookup()
-
-        # Check if the flag exists in the lookup table
-        if flag_index in self.flag_lookup:
-            target_flag = self.flag_lookup[flag_index]
-            return self.readFlag(target_flag) != 0
         else:
-            return self.readFlag(flag_index) != 0
+            if self.flag_lookup is None:
+                self._build_flag_lookup()
+
+            # Check if the flag exists in the lookup table
+            if flag_index in self.flag_lookup:
+                target_flag = self.flag_lookup[flag_index]
+                return self.readFlag(target_flag) != 0
+            else:
+                return self.readFlag(flag_index) != 0
 
         return False
     
@@ -172,8 +173,15 @@ class DK64Client:
             name = check_id_to_name.get(id)
             # Try to get the check via location_name_to_flag
             check = location_name_to_flag.get(name)
+            if check:
+                # Assuming we did find it in location_name_to_flag
+                check_status = self.getCheckStatus("location", check)
+                if check_status:
+                    print(f"Found {name} via location_name_to_flag")
+                    self.remaining_checks.remove(id)
+                    new_checks.append(id)
             # If its not there using the id lets try to get it via item_ids
-            if not check:
+            else:
                 check = item_ids.get(id)
                 if check:
                     flag_id = check.get("flag_id")
@@ -183,16 +191,11 @@ class DK64Client:
                     else:
                         check_status = self.getCheckStatus("location", flag_id)
                         if check_status:
+                            print(f"Found {name} via item_ids")
                             self.remaining_checks.remove(id)
                             new_checks.append(id)
                 continue
-            if not check:
-                continue
-            # Assuming we did find it in location_name_to_flag
-            check_status = self.getCheckStatus("location", check)
-            if check_status:
-                self.remaining_checks.remove(id)
-                new_checks.append(id)
+
         if new_checks:
             cb(new_checks)
         return True
