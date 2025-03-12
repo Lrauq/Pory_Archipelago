@@ -30,6 +30,7 @@ class DK64Client:
     players = None
     stop_bizhawk_spam = False
     remaining_checks = []
+    flag_lookup = None
 
     async def wait_for_pj64(self):
         clear_waiting_message = True
@@ -129,7 +130,15 @@ class DK64Client:
                 return (val & (1 << (p_value - 1))) != 0
         else:
             return self.readFlag(p_value) != 0
-
+    def _build_flag_lookup(self):
+        """Cache flag mappings to avoid repeated reads."""
+        self.flag_lookup = {}
+        for flut_index in range(0x400):
+            raw_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index))
+            if raw_flag == 0xFFFF:
+                break
+            target_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index) + 2)
+            self.flag_lookup[raw_flag] = target_flag
     def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None) -> bool:
         # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3=bfi
         # flag_index: as expected
@@ -142,18 +151,21 @@ class DK64Client:
             purchase_value = self.n64_client.read_u16(header + 2)
             purchase_kong = self.n64_client.read_u8(header + 4)
             return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
+        if self.flag_lookup is None:
+            self._build_flag_lookup()
+
+        # Check if the flag exists in the lookup table
+        if flag_index in self.flag_lookup:
+            target_flag = self.flag_lookup[flag_index]
+            return self.readFlag(target_flag) != 0
         else:
-            for flut_index in range(0x400):
-                raw_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index))
-                if raw_flag == flag_index:
-                    target_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index) + 2)
-                    print(target_flag)
-                    return self.readFlag(target_flag) != 0
-                elif raw_flag == 0xFFFF:
-                    return self.readFlag(flag_index) != 0
+            return self.readFlag(flag_index) != 0
+
         return False
     
+
     async def readChecks(self, cb):
+        """Run checks in parallel using asyncio."""
         new_checks = []
         # TODO: Still need to check shops, and BFI
         for id in self.remaining_checks:
@@ -166,7 +178,8 @@ class DK64Client:
                 if check:
                     flag_id = check.get("flag_id")
                     if not flag_id:
-                        logger.error(f"Item {name} has no flag_id")
+                        # logger.error(f"Item {name} has no flag_id")
+                        continue
                     else:
                         check_status = self.getCheckStatus("location", flag_id)
                         if check_status:
@@ -271,6 +284,7 @@ class DK64Context(CommonContext):
         self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
 
     async def send_checks(self):
+        print(self.found_checks)
         message = [{"cmd": "LocationChecks", "locations": self.found_checks}]
         await self.send_msgs(message)
 
@@ -377,7 +391,7 @@ class DK64Context(CommonContext):
                 while True:
                     await self.client.reset_auth()
                     await self.client.main_tick(on_item_get, victory)
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(0.5)
                     now = time.time()
                     if self.last_resend + 5.0 < now:
                         self.last_resend = now
