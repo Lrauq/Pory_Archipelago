@@ -1,6 +1,6 @@
 """Location and item IDs for DK64."""
 
-check_ids = {
+check_names_to_id = {
     "Aztec Donkey Medal": 14041209,
     "Aztec Diddy Medal": 14041210,
     "Aztec Lanky Medal": 14041211,
@@ -505,3 +505,5 @@ check_ids = {
     "Turn In Creepy Castle Tiny Blueprint": 14041601,
     "Turn In Creepy Castle Chunky Blueprint": 14041602,
 }
+
+check_id_to_name = {v: k for k, v in check_names_to_id.items()}

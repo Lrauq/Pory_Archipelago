@@ -14,8 +14,8 @@ import typing
 from worlds.dk64.client.common import N64Exception, DK64MemoryMap, create_task_log_exception
 from worlds.dk64.client.pj64 import PJ64Client
 from worlds.dk64.client.items import item_ids, item_names_to_id
-from worlds.dk64.client.check_flag_locations import location_flag_ids
-from worlds.dk64.client.ap_check_ids import check_ids
+from worlds.dk64.client.check_flag_locations import location_flag_to_name, location_name_to_flag
+from worlds.dk64.client.ap_check_ids import check_id_to_name, check_names_to_id
 
 from CommonClient import CommonContext, get_base_parser, gui_enabled, logger, server_loop
 from NetUtils import ClientStatus
@@ -28,8 +28,8 @@ class DK64Client:
     auth = None
     recvd_checks = []
     players = None
-
     stop_bizhawk_spam = False
+    remaining_checks = []
 
     async def wait_for_pj64(self):
         clear_waiting_message = True
@@ -151,22 +151,33 @@ class DK64Client:
                 elif raw_flag == 0xFFFF:
                     return self.readFlag(flag_index) != 0
         return False
-
-    # TODO: We need to modify this function to use getCheckStatus instead of the gameboy logic
+    
     async def readChecks(self, cb):
         new_checks = []
-        for check in self.remaining_checks:
-            addresses = [check.address]
-            if check.alternateAddress:
-                addresses.append(check.alternateAddress)
-            bytes = await self.gameboy.read_memory_cache(addresses)
-            if not bytes:
-                return False
-            check.set(list(bytes.values()))
-
-            if check.value:
-                self.remaining_checks.remove(check)
-                new_checks.append(check)
+        # TODO: Still need to check shops, and BFI
+        for id in self.remaining_checks:
+            name = check_id_to_name.get(id)
+            # Try to get the check via location_name_to_flag
+            check = location_name_to_flag.get(name)
+            # If its not there using the id lets try to get it via item_ids
+            if not check:
+                check = item_ids.get(id)
+                if check:
+                    flag_id = check.get("flag_id")
+                    if not flag_id:
+                        logger.error(f"Item {name} has no flag_id")
+                    check_status = self.getCheckStatus("location", flag_id)
+                    if check_status:
+                        self.remaining_checks.remove(id)
+                        new_checks.append(id)
+                continue
+            if not check:
+                continue
+            # Assuming we did find it in location_name_to_flag
+            check_status = self.getCheckStatus("location", check)
+            if check_status:
+                self.remaining_checks.remove(id)
+                new_checks.append(id)
         if new_checks:
             cb(new_checks)
         return True
@@ -228,12 +239,14 @@ class DK64Context(CommonContext):
     la_task = None
     found_checks = []
     last_resend = time.time()
+    remaining_checks = list(check_id_to_name.keys())
 
     won = False
 
     def __init__(self, server_address: typing.Optional[str], password: typing.Optional[str]) -> None:
         self.client = DK64Client()
         self.client.game = self.game.upper()
+        self.client.remaining_checks = self.remaining_checks
         self.slot_data = {}
 
         super().__init__(server_address, password)
@@ -320,10 +333,18 @@ class DK64Context(CommonContext):
             await self.send_victory()
 
         def on_item_get(dk64_checks):
-            return
-            # TODO: implement this
             # checks = [item_ids[check.id] for check in dk64_checks]
-            # self.new_checks(checks)
+            built_checks_list = []
+            for check in dk64_checks:
+                check_name = check_id_to_name.get(check)
+                if check_name:
+                    built_checks_list.append(check_name)
+                    continue
+                item = item_ids.get(check)
+                if item:
+                    item_name = item.get("name")
+                    built_checks_list.append(item_name)
+            self.new_checks(built_checks_list)
 
         # yield to allow UI to start
         await asyncio.sleep(0)

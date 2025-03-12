@@ -1,4 +1,4 @@
-location_flag_ids = {
+location_flag_to_name = {
     1: "Japes Lanky Grape Gate Barrel",
     2: "Japes Tiny Feather Gate Barrel",
     3: "Japes Donkey Baboon Blast",
@@ -350,3 +350,5 @@ location_flag_ids = {
     736: "Isles Dirt: Banana Hoard",
     739: "Isles Dirt: Castle Lobby",
 }
+
+location_name_to_flag = {v: k for k, v in location_flag_to_name.items()}
