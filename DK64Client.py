@@ -139,6 +139,21 @@ class DK64Client:
                 break
             target_flag = self.n64_client.read_u16(0x807E2EE0 + (4 * flut_index) + 2)
             self.flag_lookup[raw_flag] = target_flag
+
+    def getMoveStatus(self, move_flag: int) -> bool:
+        item_kong = (move_flag >> 12) & 7
+        if item_kong > 4:
+            item_kong = 0
+        item_type = (move_flag >> 8) & 15
+        if item_type == 7:
+            return True
+        item_index = move_flag & 0xFF
+        address = 0x807FC950 + (0x5E * item_kong) + item_type
+        value = self.n64_client.read_u8(address)
+        offset = 0
+        if item_index > 0:
+            offset = item_index - 1
+        return ((value >> offset) & 1) != 0
     def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None) -> bool:
         # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3=bfi
         # flag_index: as expected
@@ -158,11 +173,15 @@ class DK64Client:
             # Check if the flag exists in the lookup table
             if flag_index in self.flag_lookup:
                 target_flag = self.flag_lookup[flag_index]
+                if target_flag & 0x8000:
+                    return self.getMoveStatus(target_flag)
+                elif target_flag == 0xFFFE:
+                    has_camera = self.readFlag(0x2FD) != 0
+                    has_shockwave = self.readFlag(0x179) != 0
+                    return has_camera and has_shockwave
                 return self.readFlag(target_flag) != 0
             else:
                 return self.readFlag(flag_index) != 0
-
-        return False
     
 
     async def readChecks(self, cb):
@@ -177,7 +196,7 @@ class DK64Client:
                 # Assuming we did find it in location_name_to_flag
                 check_status = self.getCheckStatus("location", check)
                 if check_status:
-                    print(f"Found {name} via location_name_to_flag")
+                    logger.info(f"Found {name} via location_name_to_flag")
                     self.remaining_checks.remove(id)
                     new_checks.append(id)
             # If its not there using the id lets try to get it via item_ids
@@ -191,9 +210,64 @@ class DK64Client:
                     else:
                         check_status = self.getCheckStatus("location", flag_id)
                         if check_status:
-                            print(f"Found {name} via item_ids")
+                            logger.info(f"Found {name} via item_ids")
                             self.remaining_checks.remove(id)
                             new_checks.append(id)
+                else:
+                    # If the content is 3 parts separated by a space, we can assume it's a shop check
+                    content = name.split(" ")
+                    if name == "The Banana Fairy's Gift":
+                        check_status = self.getCheckStatus("shop", None, 3, None, None)
+                        if check_status:
+                            logger.info(f"Found {name} via location_name_to_flag")
+                            self.remaining_checks.remove(id)
+                            new_checks.append(id)
+                        continue
+                    elif len(content) == 3:
+                        level_index = None
+                        shop_index = None
+                        kong_index = None
+                        if content[0] == "Japes":
+                            level_index = 0
+                        elif content[0] == "Aztec":
+                            level_index = 1
+                        elif content[0] == "Factory":
+                            level_index = 2
+                        elif content[0] == "Galleon":
+                            level_index = 3
+                        elif content[0] == "Forest":
+                            level_index = 4
+                        elif content[0] == "Caves":
+                            level_index = 5
+                        elif content[0] == "Castle":
+                            level_index = 6
+                        elif content[0] == "Isles":
+                            level_index = 7
+                        if content[1] == "Cranky":
+                            shop_index = 0
+                        elif content[1] == "Funky":
+                            shop_index = 1
+                        elif content[1] == "Candy":
+                            shop_index = 2
+                        if content[2] == "Donkey":
+                            kong_index = 0
+                        elif content[2] == "Diddy":
+                            kong_index = 1
+                        elif content[2] == "Lanky":
+                            kong_index = 2
+                        elif content[2] == "Tiny":
+                            kong_index = 3
+                        elif content[2] == "Chunky":
+                            kong_index = 4
+                        # If any of these are not set, continue
+                        if level_index is None or shop_index is None or kong_index is None:
+                            continue
+                        check_status = self.getCheckStatus("shop", None, shop_index, level_index, kong_index)
+                        if check_status:
+                            logger.info(f"Found {name} via shop")
+                            self.remaining_checks.remove(id)
+                            new_checks.append(id)
+                        continue
                 continue
 
         if new_checks:
@@ -287,7 +361,6 @@ class DK64Context(CommonContext):
         self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
 
     async def send_checks(self):
-        print(self.found_checks)
         message = [{"cmd": "LocationChecks", "locations": self.found_checks}]
         await self.send_msgs(message)
 
@@ -394,7 +467,7 @@ class DK64Context(CommonContext):
                 while True:
                     await self.client.reset_auth()
                     await self.client.main_tick(on_item_get, victory)
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(1)
                     now = time.time()
                     if self.last_resend + 5.0 < now:
                         self.last_resend = now
