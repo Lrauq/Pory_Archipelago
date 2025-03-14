@@ -413,9 +413,7 @@ class DK64Context(CommonContext):
 
         if cmd == "ReceivedItems":
             for index, item in enumerate(args["items"], start=args["index"]):
-                # If the item was not sent by ourselves to ourselves
-                if item.player != self.player:
-                    self.client.recvd_checks.append(item)
+                self.client.recvd_checks.append(item)
 
     async def sync(self):
         sync_msg = [{"cmd": "Sync"}]
@@ -491,7 +489,7 @@ async def main():
     args = parser.parse_args()
 
     ctx = DK64Context(args.connect, args.password)
-
+    ctx.items_handling = 0b101
     ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
 
     ctx.la_task = create_task_log_exception(ctx.run_game_loop())
