@@ -187,7 +187,6 @@ class DK64Client:
     async def readChecks(self, cb):
         """Run checks in parallel using asyncio."""
         new_checks = []
-        # TODO: Still need to check shops, and BFI
         for id in self.remaining_checks:
             name = check_id_to_name.get(id)
             # Try to get the check via location_name_to_flag
@@ -466,6 +465,10 @@ class DK64Context(CommonContext):
                 await asyncio.sleep(1.0)
                 while True:
                     await self.client.reset_auth()
+                    status = self.client.check_safe_gameplay()
+                    if status == False:
+                        await asyncio.sleep(5)
+                        continue
                     await self.client.main_tick(on_item_get, victory)
                     await asyncio.sleep(1)
                     now = time.time()
