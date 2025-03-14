@@ -413,7 +413,9 @@ class DK64Context(CommonContext):
 
         if cmd == "ReceivedItems":
             for index, item in enumerate(args["items"], start=args["index"]):
-                self.client.recvd_checks.append(item)
+                # If the item was not sent by ourselves to ourselves
+                if item.player != self.player:
+                    self.client.recvd_checks.append(item)
 
     async def sync(self):
         sync_msg = [{"cmd": "Sync"}]
