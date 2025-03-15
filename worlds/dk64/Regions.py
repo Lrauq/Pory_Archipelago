@@ -10,7 +10,7 @@ from worlds.dk64.DK64R.randomizer.Enums.Kongs import Kongs
 from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
 from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
 from worlds.dk64.DK64R.randomizer.Enums.Regions import Regions
-from worlds.dk64.DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting
+from worlds.dk64.DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting, FasterChecksSelected
 from worlds.dk64.DK64R.randomizer.Enums.Types import Types
 from worlds.dk64.DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
 from worlds.dk64.DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
@@ -130,6 +130,12 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
             location_logics = []
         for location_logic in location_logics:
             location_obj = DK64RLocation.LocationListOriginal[location_logic.id]
+            # DK Arcade Round 1 is dependent on a setting - don't create the inaccessible location depending on that Faster Checks toggle
+            if location_logic.id == Locations.FactoryDonkeyDKArcade:
+                if logic_holder.checkFastCheck(FasterChecksSelected.factory_arcade_round_1) and region_name == "FactoryArcadeTunnel":
+                    continue
+                elif not logic_holder.checkFastCheck(FasterChecksSelected.factory_arcade_round_2) and region_name == "FactoryBaboonBlast":
+                    continue
             # Starting move locations and Kongs may be shuffled but their locations are not relevant ever due to item placement restrictions
             if location_obj.type in (Types.TrainingBarrel, Types.PreGivenMove, Types.Kong):
                 continue
@@ -187,7 +193,7 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
         elif collectible.type == Collectibles.balloon:
             quantity *= 10
         location.place_locked_item(DK64Item("Collectible CBs, " + collectible.kong.name + ", " + level.name + ", " + str(quantity), ItemClassification.progression, None, player))
-        print("Collectible CBs, " + collectible.kong.name + ", " + level.name + ", " + str(quantity))
+        # print("Collectible CBs, " + collectible.kong.name + ", " + level.name + ", " + str(quantity))
         new_region.locations.append(location)
     
     for event in events:

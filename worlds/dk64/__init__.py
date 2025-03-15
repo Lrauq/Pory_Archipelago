@@ -9,6 +9,7 @@ if not "DK64Client" in original_file:
     sys.path.append('./worlds/dk64/DK64R/')
 
     from BaseClasses import Item, MultiWorld, Tutorial, ItemClassification
+    from worlds.dk64.DK64R.randomizer.Enums.Items import Items as DK64RItems
     from worlds.dk64.DK64R.randomizer.SettingStrings import decrypt_settings_string_enum
     from .Items import DK64Item, full_item_table, setup_items
     from .Options import GenerateDK64Options, dk64_options
@@ -94,7 +95,34 @@ if not "DK64Client" in original_file:
 
         def generate_output(self, output_directory: str):
             try:
-                # DK64_TODO: Handle patching via DK64R
+                # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
+                for ap_location in self.multiworld.get_locations(self.player):
+                    # We never need to place Collectibles or Events in our world state
+                    if "Collectible" in ap_location.name or "Event" in ap_location.name:
+                        continue
+                    # Find the corresponding DK64 Locations enum
+                    dk64_location_id = None
+                    for dk64_loc_id, dk64_loc in self.logic_holder.spoiler.LocationList.items():
+                        if dk64_loc.name == ap_location.name:
+                            dk64_location_id = dk64_loc_id
+                            break
+                    if dk64_location_id is not None and ap_location.item is not None:
+                        ap_item = ap_location.item
+                        if ap_item.player != self.player:
+                            self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.TestItem)  # TODO: replace with new AP item
+                        elif "Collectible" in ap_item.name:
+                            continue
+                        else:
+                            dk64_item = DK64RItems[ap_item.name]
+                            if dk64_item is not None:
+                                self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, dk64_item)
+                            else:
+                                print(f"Item {ap_item.name} not found in DK64 item table.")
+                    elif dk64_location_id is not None:
+                        self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.NoItem)
+                    else:
+                        print(f"Location {ap_location.name} not found in DK64 location table.")
+
                 rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.sfc")
             except:
                 raise

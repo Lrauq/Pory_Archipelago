@@ -374,6 +374,7 @@ class LogicVarHolder:
         self.Update(ownedItems)
 
         # We update CBs after updating items because we need to know if we have each Kong
+        colored_banana_counts = [[0] * 5 for _ in range(9)]
         for item_name in cbArchItems:
             # CBs are carefully named in the following format:
             # index 0: "Collectible CBs" - needed to identify this as a collectible item
@@ -387,7 +388,8 @@ class LogicVarHolder:
                 continue
             level = Levels[item_data[2]]
             quantity = int(item_data[3])
-            self.ColoredBananas[level][kong] += quantity
+            colored_banana_counts[level][kong] += quantity
+        self.ColoredBananas = colored_banana_counts
 
     def Update(self, ownedItems):
         """Update logic variables based on owned items."""
