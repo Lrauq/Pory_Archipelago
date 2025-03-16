@@ -28,8 +28,10 @@ if not "DK64Client" in original_file:
     from worlds.dk64.DK64R.randomizer.Patching.ApplyRandomizer import patching_response
     from worlds.dk64.DK64R import version
     from worlds.dk64.DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
-    from worlds.dk64.DK64R.randomizer.Fill import ShuffleItems
-
+    from worlds.dk64.DK64R.randomizer.Fill import ShuffleItems, ItemReference
+    from worlds.dk64.DK64R.randomizer.CompileHints import compileMicrohints
+    from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
+    from worlds.dk64.DK64R.randomizer.Lists.Location import PreGivenLocations
     class DK64Web(WebWorld):
         theme = "jungle"
 
@@ -107,8 +109,8 @@ if not "DK64Client" in original_file:
             self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("BananaHoard", ItemClassification.progression, 0x000000, self.player)) # TEMP?
 
         def generate_output(self, output_directory: str):
-            rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.lanky")
             try:
+                self.logic_holder.spoiler.pregiven_items = []
                 # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
                 for ap_location in self.multiworld.get_locations(self.player):
                     # We never need to place Collectibles or Events in our world state
@@ -120,6 +122,11 @@ if not "DK64Client" in original_file:
                         if dk64_loc.name == ap_location.name:
                             dk64_location_id = dk64_loc_id
                             break
+                        if dk64_loc_id in PreGivenLocations:
+                            if self.logic_holder.spoiler.settings.fast_start_beginning_of_game or dk64_loc_id != Locations.IslesFirstMove:
+                                self.logic_holder.spoiler.pregiven_items.append(dk64_loc.item)
+                            else:
+                                self.logic_holder.spoiler.first_move_item = dk64_loc.item
                     if dk64_location_id is not None and ap_location.item is not None:
                         ap_item = ap_location.item
                         if ap_item.player != self.player:
@@ -136,16 +143,94 @@ if not "DK64Client" in original_file:
                         self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.NoItem)
                     else:
                         print(f"Location {ap_location.name} not found in DK64 location table.")
+                self.logic_holder.spoiler.location_references = [
+                    # DK Moves
+                    ItemReference(DK64RItems.BaboonBlast, "Baboon Blast", "DK Japes Cranky"),
+                    ItemReference(DK64RItems.StrongKong, "Strong Kong", "DK Aztec Cranky"),
+                    ItemReference(DK64RItems.GorillaGrab, "Gorilla Grab", "DK Factory Cranky"),
+                    ItemReference(DK64RItems.Coconut, "Coconut Gun", "DK Japes Funky"),
+                    ItemReference(DK64RItems.Bongos, "Bongo Blast", "DK Aztec Candy"),
+                    # Diddy Moves
+                    ItemReference(DK64RItems.ChimpyCharge, "Chimpy Charge", "Diddy Japes Cranky"),
+                    ItemReference(DK64RItems.RocketbarrelBoost, "Rocketbarrel Boost", "Diddy Aztec Cranky"),
+                    ItemReference(DK64RItems.SimianSpring, "Simian Spring", "Diddy Factory Cranky"),
+                    ItemReference(DK64RItems.Peanut, "Peanut Popguns", "Diddy Japes Funky"),
+                    ItemReference(DK64RItems.Guitar, "Guitar Gazump", "Diddy Aztec Candy"),
+                    # Lanky Moves
+                    ItemReference(DK64RItems.Orangstand, "Orangstand", "Lanky Japes Cranky"),
+                    ItemReference(DK64RItems.BaboonBalloon, "Baboon Balloon", "Lanky Factory Cranky"),
+                    ItemReference(DK64RItems.OrangstandSprint, "Orangstand Sprint", "Lanky Caves Cranky"),
+                    ItemReference(DK64RItems.Grape, "Grape Shooter", "Lanky Japes Funky"),
+                    ItemReference(DK64RItems.Trombone, "Trombone Tremor", "Lanky Aztec Candy"),
+                    # Tiny Moves
+                    ItemReference(DK64RItems.MiniMonkey, "Mini Monkey", "Tiny Japes Cranky"),
+                    ItemReference(DK64RItems.PonyTailTwirl, "Pony Tail Twirl", "Tiny Factory Cranky"),
+                    ItemReference(DK64RItems.Monkeyport, "Monkeyport", "Tiny Caves Cranky"),
+                    ItemReference(DK64RItems.Feather, "Feather Bow", "Tiny Japes Funky"),
+                    ItemReference(DK64RItems.Saxophone, "Saxophone Slam", "Tiny Aztec Candy"),
+                    # Chunky Moves
+                    ItemReference(DK64RItems.HunkyChunky, "Hunky Chunky", "Chunky Japes Cranky"),
+                    ItemReference(DK64RItems.PrimatePunch, "Primate Punch", "Chunky Factory Cranky"),
+                    ItemReference(DK64RItems.GorillaGone, "Gorilla Gone", "Chunky Caves Cranky"),
+                    ItemReference(DK64RItems.Pineapple, "Pineapple Launcher", "Chunky Japes Funky"),
+                    ItemReference(DK64RItems.Triangle, "Triangle Trample", "Chunky Aztec Candy"),
+                    # Gun Upgrades
+                    ItemReference(DK64RItems.HomingAmmo, "Homing Ammo", "Shared Forest Funky"),
+                    ItemReference(DK64RItems.SniperSight, "Sniper Scope", "Shared Castle Funky"),
+                    ItemReference(DK64RItems.ProgressiveAmmoBelt, "Progressive Ammo Belt", ["Shared Factory Funky", "Shared Caves Funky"]),
+                    ItemReference(DK64RItems.Camera, "Fairy Camera", "Banana Fairy Gift"),
+                    ItemReference(DK64RItems.Shockwave, "Shockwave", "Banana Fairy Gift"),
+                    # Basic Moves
+                    ItemReference(DK64RItems.Swim, "Diving", "Dive Barrel"),
+                    ItemReference(DK64RItems.Oranges, "Orange Throwing", "Orange Barrel"),
+                    ItemReference(DK64RItems.Barrels, "Barrel Throwing", "Barrel Barrel"),
+                    ItemReference(DK64RItems.Vines, "Vine Swinging", "Vine Barrel"),
+                    ItemReference(DK64RItems.Climbing, "Climbing", "Starting Move"),
+                    # Instrument Upgrades & Slams
+                    ItemReference(
+                        DK64RItems.ProgressiveInstrumentUpgrade,
+                        "Progressive Instrument Upgrade",
+                        ["Shared Galleon Candy", "Shared Caves Candy", "Shared Castle Candy"],
+                    ),
+                    ItemReference(
+                        DK64RItems.ProgressiveSlam,
+                        "Progressive Slam",
+                        ["Shared Isles Cranky", "Shared Forest Cranky", "Shared Castle Cranky"],
+                    ),
+                    # Kongs
+                    ItemReference(DK64RItems.Donkey, "Donkey Kong", "Starting Kong"),
+                    ItemReference(DK64RItems.Diddy, "Diddy Kong", "Japes Diddy Cage"),
+                    ItemReference(DK64RItems.Lanky, "Lanky Kong", "Llama Lanky Cage"),
+                    ItemReference(DK64RItems.Tiny, "Tiny Kong", "Aztec Tiny Cage"),
+                    ItemReference(DK64RItems.Chunky, "Chunky Kong", "Factory Chunky Cage"),
+                    # Shopkeepers
+                    ItemReference(DK64RItems.Cranky, "Cranky Kong", "Starting Item"),
+                    ItemReference(DK64RItems.Candy, "Candy Kong", "Starting Item"),
+                    ItemReference(DK64RItems.Funky, "Funky Kong", "Starting Item"),
+                    ItemReference(DK64RItems.Snide, "Snide", "Starting Item"),
+                    # Early Keys
+                    ItemReference(DK64RItems.JungleJapesKey, "Key 1", "Starting Key"),
+                    ItemReference(DK64RItems.AngryAztecKey, "Key 2", "Starting Key"),
+                    ItemReference(DK64RItems.FranticFactoryKey, "Key 3", "Starting Key"),
+                    ItemReference(DK64RItems.GloomyGalleonKey, "Key 4", "Starting Key"),
+                    # Late Keys
+                    ItemReference(DK64RItems.FungiForestKey, "Key 5", "Starting Key"),
+                    ItemReference(DK64RItems.CrystalCavesKey, "Key 6", "Starting Key"),
+                    ItemReference(DK64RItems.CreepyCastleKey, "Key 7", "Starting Key"),
+                    ItemReference(DK64RItems.HideoutHelmKey, "Key 8", "Starting Key"),
+                ]
+                self.logic_holder.spoiler.UpdateLocations(self.logic_holder.spoiler.LocationList)
+                compileMicrohints(self.logic_holder.spoiler)
+                self.logic_holder.spoiler.majorItems = []
                 patch_data, _ = patching_response(self.logic_holder.spoiler)
                 self.logic_holder.spoiler.FlushAllExcessSpoilerData()
                 patch_file = self.update_seed_results(patch_data, self.logic_holder.spoiler, self.player)
-                with open(rompath, "wb") as f:
+                print("output/" + f"{self.multiworld.get_out_file_name_base(self.player)}-dk64.lanky")
+                with open("output/" + f"{self.multiworld.get_out_file_name_base(self.player)}-dk64.lanky", "w") as f:
                     f.write(patch_file)
             except:
                 raise
             finally:
-                if os.path.exists(rompath):
-                    os.unlink(rompath)
                 self.rom_name_available_event.set() # make sure threading continues and errors are collected
 
         def update_seed_results(self, patch, spoiler, player_id):
@@ -164,7 +249,7 @@ if not "DK64Client" in original_file:
                 zip_file.writestr("spoiler_log", str(json.dumps(spoiler_log)))
                 zip_file.writestr("seed_id", str(spoiler.settings.seed_id))
                 zip_file.writestr("generated_time", str(timestamp))
-                zip_file.writestr("version", version)
+                zip_file.writestr("version", version.version)
                 zip_file.writestr("seed_number", "archipelago-seed-" + str(player_id))
             zip_data.seek(0)
             # Convert the zip to a string of base64 data
