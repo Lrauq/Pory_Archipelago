@@ -3,6 +3,11 @@ import sys
 import typing
 import math
 import threading
+import time
+import json
+import zipfile
+import codecs
+from io import BytesIO
 # Print the original running script
 original_file = os.path.basename(sys.argv[0])
 if not "DK64Client" in original_file:
@@ -16,10 +21,12 @@ if not "DK64Client" in original_file:
     from .Regions import all_locations, create_regions, connect_regions
     from .Rules import set_rules
     from worlds.AutoWorld import WebWorld, World
-    import Patch
+    # import Patch
     from .Logic import LogicVarHolder
     from worlds.dk64.DK64R.randomizer.Spoiler import Spoiler
     from worlds.dk64.DK64R.randomizer.Settings import Settings
+    from worlds.dk64.DK64R.randomizer.Patching.ApplyRandomizer import patching_response
+    from worlds.dk64.DK64R import version
 
     class DK64Web(WebWorld):
         theme = "jungle"
@@ -122,14 +129,42 @@ if not "DK64Client" in original_file:
                         self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.NoItem)
                     else:
                         print(f"Location {ap_location.name} not found in DK64 location table.")
-
-                rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.sfc")
+                patch_data, _ = patching_response(self.logic_holder.spoiler)
+                self.logic_holder.spoiler.FlushAllExcessSpoilerData()
+                patch_file = self.update_seed_results(patch_data, self.logic_holder.spoiler, self.player)
+                rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.lanky")
+                with open(rompath, "wb") as f:
+                    f.write(patch_file)
             except:
                 raise
             finally:
                 if os.path.exists(rompath):
                     os.unlink(rompath)
                 self.rom_name_available_event.set() # make sure threading continues and errors are collected
+
+        def update_seed_results(self, patch, spoiler, player_id):
+            """Update the seed results."""
+            
+            timestamp = time.time()
+            hash = spoiler.settings.seed_hash
+            spoiler_log = json.loads(spoiler.json)
+            spoiler_log["Generated Time"] = timestamp
+            # Zip all the data into a single file.
+            zip_data = BytesIO()
+            with zipfile.ZipFile(zip_data, "w") as zip_file:
+                # Write each variable to the zip file
+                zip_file.writestr("patch", patch)
+                zip_file.writestr("hash", str(hash))
+                zip_file.writestr("spoiler_log", str(json.dumps(spoiler_log)))
+                zip_file.writestr("seed_id", str(spoiler.settings.seed_id))
+                zip_file.writestr("generated_time", str(timestamp))
+                zip_file.writestr("version", version)
+                zip_file.writestr("seed_number", "archipelago-seed-" + str(player_id))
+            zip_data.seek(0)
+            # Convert the zip to a string of base64 data
+            zip_conv = codecs.encode(zip_data.getvalue(), "base64").decode()
+
+            return zip_conv
 
         def modify_multidata(self, multidata: dict):
             pass
