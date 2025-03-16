@@ -27,6 +27,8 @@ if not "DK64Client" in original_file:
     from worlds.dk64.DK64R.randomizer.Settings import Settings
     from worlds.dk64.DK64R.randomizer.Patching.ApplyRandomizer import patching_response
     from worlds.dk64.DK64R import version
+    from worlds.dk64.DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
+    from worlds.dk64.DK64R.randomizer.Fill import ShuffleItems
 
     class DK64Web(WebWorld):
         theme = "jungle"
@@ -63,7 +65,7 @@ if not "DK64Client" in original_file:
         def __init__(self, multiworld: MultiWorld, player: int):
             self.rom_name_available_event = threading.Event()
             super().__init__(multiworld, player)
-            self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKi4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
+            self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKC4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
             settings_dict = decrypt_settings_string_enum(self.settings_string)
             settings = Settings(settings_dict)
             spoiler = Spoiler(settings)
@@ -82,8 +84,12 @@ if not "DK64Client" in original_file:
             }
 
         def generate_early(self):
-            # handle starting moves?
-            pass
+            # Handle enemy rando
+            self.logic_holder.spoiler.enemy_rando_data = {}
+            self.logic_holder.spoiler.pkmn_snap_data = []
+            if self.logic_holder.spoiler.settings.enemy_rando:
+                randomize_enemies_0(self.logic_holder.spoiler)
+            ShuffleItems(self.logic_holder.spoiler)
 
         def create_regions(self) -> None:
             create_regions(self.multiworld, self.player, self.logic_holder)
