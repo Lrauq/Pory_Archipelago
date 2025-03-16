@@ -101,6 +101,7 @@ if not "DK64Client" in original_file:
             self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("BananaHoard", ItemClassification.progression, 0x000000, self.player)) # TEMP?
 
         def generate_output(self, output_directory: str):
+            rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.lanky")
             try:
                 # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
                 for ap_location in self.multiworld.get_locations(self.player):
@@ -116,7 +117,7 @@ if not "DK64Client" in original_file:
                     if dk64_location_id is not None and ap_location.item is not None:
                         ap_item = ap_location.item
                         if ap_item.player != self.player:
-                            self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.TestItem)  # TODO: replace with new AP item
+                            self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.ArchipelagoItem)  # TODO: replace with new AP item
                         elif "Collectible" in ap_item.name:
                             continue
                         else:
@@ -132,7 +133,6 @@ if not "DK64Client" in original_file:
                 patch_data, _ = patching_response(self.logic_holder.spoiler)
                 self.logic_holder.spoiler.FlushAllExcessSpoilerData()
                 patch_file = self.update_seed_results(patch_data, self.logic_holder.spoiler, self.player)
-                rompath = os.path.join(output_directory, f"{self.multiworld.get_out_file_name_base(self.player)}.lanky")
                 with open(rompath, "wb") as f:
                     f.write(patch_file)
             except:
@@ -147,7 +147,7 @@ if not "DK64Client" in original_file:
             
             timestamp = time.time()
             hash = spoiler.settings.seed_hash
-            spoiler_log = json.loads(spoiler.json)
+            spoiler_log = {}
             spoiler_log["Generated Time"] = timestamp
             # Zip all the data into a single file.
             zip_data = BytesIO()
