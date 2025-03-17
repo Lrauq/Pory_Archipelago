@@ -29,14 +29,16 @@ from worlds.dk64.DK64R.randomizer.Fill import ShuffleItems, ItemReference
 from worlds.dk64.DK64R.randomizer.CompileHints import compileMicrohints
 from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
 from worlds.dk64.DK64R.randomizer.Lists.Location import PreGivenLocations
-from worlds.LauncherComponents import Component, components, Type, launch as launch_component
+from worlds.LauncherComponents import Component, components, Type, icon_paths, local_path, launch as launch_component
 
 def launch_client():
     from .DK64Client import launch
     launch_component(launch, name="DK64 Client")
 
 
-components.append(Component("DK64 Client", "DK64Client", func=launch_client, component_type=Type.CLIENT))
+components.append(Component("DK64 Client", "DK64Client", func=launch_client, component_type=Type.CLIENT, icon="dk64"))
+
+icon_paths['dk64'] = local_path('worlds/dk64/dk64r/static/img/', 'dk.png')
 
 class DK64Web(WebWorld):
     theme = "jungle"
