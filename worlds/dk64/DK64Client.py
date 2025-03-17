@@ -481,27 +481,27 @@ class DK64Context(CommonContext):
             except (asyncio.TimeoutError, TimeoutError, ConnectionResetError):
                 await asyncio.sleep(1.0)
 
+def launch():
+    async def main():
+        parser = get_base_parser(description="Donkey Kong 64 Client.")
+        parser.add_argument("--url", help="Archipelago connection url")
 
-async def main():
-    parser = get_base_parser(description="Donkey Kong 64 Client.")
-    parser.add_argument("--url", help="Archipelago connection url")
+        args = parser.parse_args()
 
-    args = parser.parse_args()
+        ctx = DK64Context(args.connect, args.password)
+        ctx.items_handling = 0b101
+        ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
 
-    ctx = DK64Context(args.connect, args.password)
-    ctx.items_handling = 0b101
-    ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
+        ctx.la_task = create_task_log_exception(ctx.run_game_loop())
+        if gui_enabled:
+            ctx.run_gui()
+        ctx.run_cli()
 
-    ctx.la_task = create_task_log_exception(ctx.run_game_loop())
-    if gui_enabled:
-        ctx.run_gui()
-    ctx.run_cli()
-
-    await ctx.exit_event.wait()
-    await ctx.shutdown()
-
-
-if __name__ == "__main__":
+        await ctx.exit_event.wait()
+        await ctx.shutdown()
     colorama.init()
     asyncio.run(main())
     colorama.deinit()
+
+if __name__ == "__main__":
+    launch()

@@ -53,7 +53,6 @@ class DK64Location(Location):
 
 # Complete location table
 all_locations = {location.name: (BASE_ID + index) for index, location in enumerate(DK64RLocation.LocationListOriginal)}
-print("locations created")
 all_locations.update({"Victory": 0x00})  # Temp for generating goal location
 lookup_id_to_name: typing.Dict[int, str] = {id: name for name, id in all_locations.items()}
 
