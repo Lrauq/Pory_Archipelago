@@ -154,7 +154,7 @@ class DK64World(World):
                         if dk64_item is not None:
                             dk64_location = spoiler.LocationList[dk64_location_id]
                             # Junk items can't be placed in shops, bosses, or arenas. Fortunately this is junk, so we can just patch a NoItem there instead.
-                            if dk64_item in (DK64RItems.JunkMelon) and dk64_location.type in (Types.Shop, Types.Key, Types.Crown):
+                            if dk64_item in [DK64RItems.JunkMelon] and dk64_location.type in [Types.Shop, Types.Key, Types.Crown]:
                                 dk64_item = DK64RItems.NoItem
                             # Blueprints can't be on fairies for technical reasons. Instead we'll patch it in as an AP item and have AP handle it.
                             if dk64_item in DK64RItemPool.Blueprints() and dk64_location.type == Types.Fairy:
