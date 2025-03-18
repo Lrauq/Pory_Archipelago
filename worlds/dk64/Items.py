@@ -12,7 +12,6 @@ import DK64R.randomizer.ItemPool as DK64RItemPoolUtility
 
 BASE_ID = 0xD64000
 
-
 class ItemData(typing.NamedTuple):
     code: typing.Optional[int]
     progression: bool
@@ -53,21 +52,21 @@ def setup_items(world: World) -> typing.List[DK64Item]:
     # V1 LIMITATION: Currently assuming Helm is your last and most expensive level
     gb_item = DK64RItem.ItemList[DK64RItems.GoldenBanana]
     for i in range(min(161, world.logic_holder.settings.BLockerEntryCount[Levels.HideoutHelm])):
-        item_table.append(DK64Item(DK64RItems.GoldenBanana.name, ItemClassification.progression, full_item_table[gb_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.GoldenBanana.name, ItemClassification.progression, full_item_table[gb_item.name].code, world.player))
     for i in range(161 - world.logic_holder.settings.BLockerEntryCount[Levels.HideoutHelm]):
-        item_table.append(DK64Item(DK64RItems.GoldenBanana.name, ItemClassification.useful, full_item_table[gb_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.GoldenBanana.name, ItemClassification.useful, full_item_table[gb_item.name].code, world.player))
     # Figure out how many Medals are progression
     medal_item = DK64RItem.ItemList[DK64RItems.BananaMedal]
     for i in range(world.logic_holder.settings.medal_requirement):
-        item_table.append(DK64Item(DK64RItems.BananaMedal.name, ItemClassification.progression, full_item_table[medal_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.BananaMedal.name, ItemClassification.progression, full_item_table[medal_item.name].code, world.player))
     for i in range(40 - world.logic_holder.settings.medal_requirement):
-        item_table.append(DK64Item(DK64RItems.BananaMedal.name, ItemClassification.useful, full_item_table[medal_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.BananaMedal.name, ItemClassification.useful, full_item_table[medal_item.name].code, world.player))
     # Figure out how many Fairies are progression
     fairy_item = DK64RItem.ItemList[DK64RItems.BananaFairy]
     for i in range(world.logic_holder.settings.rareware_gb_fairies):
-        item_table.append(DK64Item(DK64RItems.BananaFairy.name, ItemClassification.progression, full_item_table[fairy_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.BananaFairy.name, ItemClassification.progression, full_item_table[fairy_item.name].code, world.player))
     for i in range(20 - world.logic_holder.settings.rareware_gb_fairies):
-        item_table.append(DK64Item(DK64RItems.BananaFairy.name, ItemClassification.useful, full_item_table[fairy_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.BananaFairy.name, ItemClassification.useful, full_item_table[fairy_item.name].code, world.player))
 
     # V1 LIMITATION: Tough GBs must be in the pool - this can likely be worked around later
     all_shuffled_items = DK64RItemPoolUtility.GetItemsNeedingToBeAssumed(world.logic_holder.settings, [DK64RTypes.Medal, DK64RTypes.Fairy, DK64RTypes.Banana, DK64RTypes.ToughBanana, DK64RTypes.Bean, DK64RTypes.Pearl], [])
@@ -92,9 +91,9 @@ def setup_items(world: World) -> typing.List[DK64Item]:
         else: # double check jetpac, eh?
             classification = ItemClassification.useful
         if seed_item == DK64RItems.HideoutHelmKey and world.logic_holder.settings.key_8_helm:
-            world.multiworld.get_location("The End of Helm", world.player).place_locked_item(DK64Item("HideoutHelmKey", ItemClassification.progression, full_item_table[item.name], world.player))
+            world.multiworld.get_location("The End of Helm", world.player).place_locked_item(DK64Item("HideoutHelmKey", ItemClassification.progression, full_item_table[item.name].code, world.player))
             world.logic_holder.location_pool_size -= 1
-        item_table.append(DK64Item(seed_item.name, classification, full_item_table[item.name], world.player))
+        item_table.append(DK64Item(seed_item.name, classification, full_item_table[item.name].code, world.player))
         # print("Adding item: " + seed_item.name + " | " + str(classification))
 
     # If there's too many locations and not enough items, add some junk
@@ -104,7 +103,7 @@ def setup_items(world: World) -> typing.List[DK64Item]:
     if world.logic_holder.location_pool_size - len(item_table) - 1 < 0:
         raise Exception("Too many DK64 items to be placed in too few DK64 locations")
     for i in range(world.logic_holder.location_pool_size - len(item_table) - 1):  # The last 1 is for the Banana Hoard
-        item_table.append(DK64Item(DK64RItems.JunkMelon.name, ItemClassification.filler, full_item_table[junk_item.name], world.player))
+        item_table.append(DK64Item(DK64RItems.JunkMelon.name, ItemClassification.filler, full_item_table[junk_item.name].code, world.player))
     # print("projected available locations: " + str(world.logic_holder.location_pool_size - 1))
     # print("projected items to place: " + str(len(item_table)))
 
