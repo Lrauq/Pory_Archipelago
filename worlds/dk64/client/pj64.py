@@ -203,12 +203,13 @@ class PJ64Client:
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             raise N64Exception("Connection refused or reset")
 
-    def validate_rom(self, name):
+    def validate_rom(self, name, memory_location=None):
         """
         Validates the ROM by comparing its good name with the provided name.
 
         Args:
             name (str): The name to validate against the ROM's good name.
+            memory_location (int): The memory location to read from to verify the ROM is Archipelago.
 
         Returns:
             bool: True if the ROM's good name matches the provided name, False otherwise.
@@ -217,5 +218,11 @@ class PJ64Client:
         if not rom_info:
             return False
         if rom_info.get("goodName", None) == str(name).upper():
-            return True
+            if memory_location:
+                memory_result = self.read_u32(memory_location)
+                if memory_result != 0:
+                    return True
+                return False
+            else:
+                return True
         return False

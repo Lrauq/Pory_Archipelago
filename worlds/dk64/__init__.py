@@ -24,6 +24,7 @@ from worlds.AutoWorld import WebWorld, World
 from .Logic import LogicVarHolder
 from worlds.dk64.DK64R.randomizer.Spoiler import Spoiler
 from worlds.dk64.DK64R.randomizer.Settings import Settings
+from worlds.dk64.DK64R.randomizer.Enums.Settings import ShuffleLoadingZones
 from worlds.dk64.DK64R.randomizer.Patching.ApplyRandomizer import patching_response
 from worlds.dk64.DK64R import version
 from worlds.dk64.DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
@@ -33,6 +34,7 @@ from worlds.dk64.DK64R.randomizer.Enums.Types import Types
 from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
 from worlds.dk64.DK64R.randomizer.Lists.Location import PreGivenLocations
 from worlds.LauncherComponents import Component, components, Type, icon_paths, local_path, launch as launch_component
+import worlds.dk64.DK64R.randomizer.ShuffleExits as ShuffleExits
 
 def launch_client():
     from .DK64Client import launch
@@ -99,10 +101,11 @@ class DK64World(World):
 
     def generate_early(self):
         # Handle enemy rando
-        self.logic_holder.spoiler.enemy_rando_data = {}
-        self.logic_holder.spoiler.pkmn_snap_data = []
-        if self.logic_holder.spoiler.settings.enemy_rando:
-            randomize_enemies_0(self.logic_holder.spoiler)
+        spoiler = self.logic_holder.spoiler
+        spoiler.enemy_rando_data = {}
+        spoiler.pkmn_snap_data = []
+        if spoiler.settings.enemy_rando:
+            randomize_enemies_0(spoiler)
 
     def create_regions(self) -> None:
         create_regions(self.multiworld, self.player, self.logic_holder)
@@ -121,7 +124,9 @@ class DK64World(World):
 
     def generate_output(self, output_directory: str):
         try:
-            self.logic_holder.spoiler.pregiven_items = []
+            spoiler = self.logic_holder.spoiler
+            spoiler.settings.archipelago = True
+            spoiler.pregiven_items = []
             # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
             for ap_location in self.multiworld.get_locations(self.player):
                 # We never need to place Collectibles or Events in our world state
@@ -129,40 +134,45 @@ class DK64World(World):
                     continue
                 # Find the corresponding DK64 Locations enum
                 dk64_location_id = None
-                for dk64_loc_id, dk64_loc in self.logic_holder.spoiler.LocationList.items():
+                for dk64_loc_id, dk64_loc in spoiler.LocationList.items():
                     if dk64_loc.name == ap_location.name:
                         dk64_location_id = dk64_loc_id
                         break
                     if dk64_loc_id in PreGivenLocations:
-                        if self.logic_holder.spoiler.settings.fast_start_beginning_of_game or dk64_loc_id != Locations.IslesFirstMove:
-                            self.logic_holder.spoiler.pregiven_items.append(dk64_loc.item)
+                        if spoiler.settings.fast_start_beginning_of_game or dk64_loc_id != Locations.IslesFirstMove:
+                            spoiler.pregiven_items.append(dk64_loc.item)
                         else:
-                            self.logic_holder.spoiler.first_move_item = dk64_loc.item
+                            spoiler.first_move_item = dk64_loc.item
                 if dk64_location_id is not None and ap_location.item is not None:
                     ap_item = ap_location.item
                     if ap_item.player != self.player:
-                        self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.ArchipelagoItem)  # TODO: replace with new AP item
+                        spoiler.LocationList[dk64_location_id].PlaceItem(spoiler, DK64RItems.ArchipelagoItem)
                     elif "Collectible" in ap_item.name:
                         continue
                     else:
                         dk64_item = DK64RItems[ap_item.name]
                         if dk64_item is not None:
-                            dk64_location = self.logic_holder.spoiler.LocationList[dk64_location_id]
+                            dk64_location = spoiler.LocationList[dk64_location_id]
                             # Junk items can't be placed in shops, bosses, or arenas. Fortunately this is junk, so we can just patch a NoItem there instead.
                             if dk64_item in (DK64RItems.JunkMelon) and dk64_location.type in (Types.Shop, Types.Key, Types.Crown):
                                 dk64_item = DK64RItems.NoItem
                             # Blueprints can't be on fairies for technical reasons. Instead we'll patch it in as an AP item and have AP handle it.
                             if dk64_item in DK64RItemPool.Blueprints() and dk64_location.type == Types.Fairy:
                                 dk64_item = DK64RItems.ArchipelagoItem
-                            self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, dk64_item)
+                            spoiler.LocationList[dk64_location_id].PlaceItem(spoiler, dk64_item)
                         else:
                             print(f"Item {ap_item.name} not found in DK64 item table.")
                 elif dk64_location_id is not None:
-                    self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.NoItem)
+                    spoiler.LocationList[dk64_location_id].PlaceItem(spoiler, DK64RItems.NoItem)
                 else:
                     print(f"Location {ap_location.name} not found in DK64 location table.")
-            ShuffleItems(self.logic_holder.spoiler)
-            self.logic_holder.spoiler.location_references = [
+            # Handle Loading Zones - this will handle LO and LZR appropriately
+            # if spoiler.settings.shuffle_loading_zones != ShuffleLoadingZones.none:
+            #     ShuffleExits.ExitShuffle(spoiler)
+            #     spoiler.UpdateExits()
+            ShuffleItems(spoiler)
+
+            spoiler.location_references = [
                 # DK Moves
                 ItemReference(DK64RItems.BaboonBlast, "Baboon Blast", "DK Japes Cranky"),
                 ItemReference(DK64RItems.StrongKong, "Strong Kong", "DK Aztec Cranky"),
@@ -238,12 +248,12 @@ class DK64World(World):
                 ItemReference(DK64RItems.CreepyCastleKey, "Key 7", "Starting Key"),
                 ItemReference(DK64RItems.HideoutHelmKey, "Key 8", "Starting Key"),
             ]
-            self.logic_holder.spoiler.UpdateLocations(self.logic_holder.spoiler.LocationList)
-            compileMicrohints(self.logic_holder.spoiler)
-            self.logic_holder.spoiler.majorItems = []
-            patch_data, _ = patching_response(self.logic_holder.spoiler)
-            self.logic_holder.spoiler.FlushAllExcessSpoilerData()
-            patch_file = self.update_seed_results(patch_data, self.logic_holder.spoiler, self.player)
+            spoiler.UpdateLocations(spoiler.LocationList)
+            compileMicrohints(spoiler)
+            spoiler.majorItems = []
+            patch_data, _ = patching_response(spoiler)
+            spoiler.FlushAllExcessSpoilerData()
+            patch_file = self.update_seed_results(patch_data, spoiler, self.player)
             print("output/" + f"{self.multiworld.get_out_file_name_base(self.player)}-dk64.lanky")
             with open("output/" + f"{self.multiworld.get_out_file_name_base(self.player)}-dk64.lanky", "w") as f:
                 f.write(patch_file)

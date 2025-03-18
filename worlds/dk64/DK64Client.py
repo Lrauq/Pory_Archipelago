@@ -41,7 +41,7 @@ class DK64Client:
         while True:
             try:
                 socket_connected = False
-                valid_rom = self.n64_client.validate_rom(self.game)
+                valid_rom = self.n64_client.validate_rom(self.game, DK64MemoryMap.memory_pointer)
                 if self.n64_client.socket is not None and not socket_connected:
                     logger.info("Connected to PJ64")
                     socket_connected = True
@@ -53,7 +53,7 @@ class DK64Client:
                         logger.info("Waiting on valid ROM...")
                         clear_waiting_message = False
                     await asyncio.sleep(1.0)
-                    valid_rom = self.n64_client.validate_rom(self.game)
+                    valid_rom = self.n64_client.validate_rom(self.game, DK64MemoryMap.memory_pointer)
                 self.stop_bizhawk_spam = False
                 logger.info("PJ64 Connected to ROM!")
                 return
