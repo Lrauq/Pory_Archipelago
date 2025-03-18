@@ -11,11 +11,11 @@ import asyncio
 import colorama
 import time
 import typing
-from worlds.dk64.client.common import N64Exception, DK64MemoryMap, create_task_log_exception
-from worlds.dk64.client.pj64 import PJ64Client
-from worlds.dk64.client.items import item_ids, item_names_to_id
-from worlds.dk64.client.check_flag_locations import location_flag_to_name, location_name_to_flag
-from worlds.dk64.client.ap_check_ids import check_id_to_name, check_names_to_id
+from client.common import N64Exception, DK64MemoryMap, create_task_log_exception
+from client.pj64 import PJ64Client
+from client.items import item_ids, item_names_to_id
+from client.check_flag_locations import location_flag_to_name, location_name_to_flag
+from client.ap_check_ids import check_id_to_name, check_names_to_id
 
 from CommonClient import CommonContext, get_base_parser, gui_enabled, logger, server_loop
 from NetUtils import ClientStatus

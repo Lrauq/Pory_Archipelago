@@ -5,34 +5,34 @@ from collections import Counter
 from typing import List
 from BaseClasses import CollectionState
 
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.AngryAztec
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.CreepyCastle
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.CrystalCaves
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.DKIsles
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.FranticFactory
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.FungiForest
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.GloomyGalleon
-import worlds.dk64.DK64R.randomizer.CollectibleLogicFiles.JungleJapes
-import worlds.dk64.DK64R.randomizer.LogicFiles.AngryAztec
-import worlds.dk64.DK64R.randomizer.LogicFiles.CreepyCastle
-import worlds.dk64.DK64R.randomizer.LogicFiles.CrystalCaves
-import worlds.dk64.DK64R.randomizer.LogicFiles.DKIsles
-import worlds.dk64.DK64R.randomizer.LogicFiles.FranticFactory
-import worlds.dk64.DK64R.randomizer.LogicFiles.FungiForest
-import worlds.dk64.DK64R.randomizer.LogicFiles.GloomyGalleon
-import worlds.dk64.DK64R.randomizer.LogicFiles.HideoutHelm
-import worlds.dk64.DK64R.randomizer.LogicFiles.JungleJapes
-import worlds.dk64.DK64R.randomizer.LogicFiles.Shops
-from worlds.dk64.DK64R.randomizer.Enums.Collectibles import Collectibles
-from worlds.dk64.DK64R.randomizer.Enums.Events import Events
-from worlds.dk64.DK64R.randomizer.Enums.Items import Items
-from worlds.dk64.DK64R.randomizer.Enums.Kongs import Kongs
-from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
-from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
-from worlds.dk64.DK64R.randomizer.Enums.Regions import Regions as RegionEnum
-from worlds.dk64.DK64R.randomizer.Enums.Switches import Switches
-from worlds.dk64.DK64R.randomizer.Enums.SwitchTypes import SwitchType
-from worlds.dk64.DK64R.randomizer.Enums.Settings import (
+import DK64R.randomizer.CollectibleLogicFiles.AngryAztec
+import DK64R.randomizer.CollectibleLogicFiles.CreepyCastle
+import DK64R.randomizer.CollectibleLogicFiles.CrystalCaves
+import DK64R.randomizer.CollectibleLogicFiles.DKIsles
+import DK64R.randomizer.CollectibleLogicFiles.FranticFactory
+import DK64R.randomizer.CollectibleLogicFiles.FungiForest
+import DK64R.randomizer.CollectibleLogicFiles.GloomyGalleon
+import DK64R.randomizer.CollectibleLogicFiles.JungleJapes
+import DK64R.randomizer.LogicFiles.AngryAztec
+import DK64R.randomizer.LogicFiles.CreepyCastle
+import DK64R.randomizer.LogicFiles.CrystalCaves
+import DK64R.randomizer.LogicFiles.DKIsles
+import DK64R.randomizer.LogicFiles.FranticFactory
+import DK64R.randomizer.LogicFiles.FungiForest
+import DK64R.randomizer.LogicFiles.GloomyGalleon
+import DK64R.randomizer.LogicFiles.HideoutHelm
+import DK64R.randomizer.LogicFiles.JungleJapes
+import DK64R.randomizer.LogicFiles.Shops
+from DK64R.randomizer.Enums.Collectibles import Collectibles
+from DK64R.randomizer.Enums.Events import Events
+from DK64R.randomizer.Enums.Items import Items
+from DK64R.randomizer.Enums.Kongs import Kongs
+from DK64R.randomizer.Enums.Levels import Levels
+from DK64R.randomizer.Enums.Locations import Locations
+from DK64R.randomizer.Enums.Regions import Regions as RegionEnum
+from DK64R.randomizer.Enums.Switches import Switches
+from DK64R.randomizer.Enums.SwitchTypes import SwitchType
+from DK64R.randomizer.Enums.Settings import (
     ActivateAllBananaports,
     BananaportRando,
     ClimbingStatus,
@@ -54,15 +54,15 @@ from worlds.dk64.DK64R.randomizer.Enums.Settings import (
     SlamRequirement,
     WinConditionComplex,
 )
-from worlds.dk64.DK64R.randomizer.Enums.VendorType import VendorType
-from worlds.dk64.DK64R.randomizer.Enums.Time import Time
-from worlds.dk64.DK64R.randomizer.Enums.Types import Types, BarrierItems
-from worlds.dk64.DK64R.randomizer.Lists.Item import ItemList
-from worlds.dk64.DK64R.randomizer.Enums.Maps import Maps
-from worlds.dk64.DK64R.randomizer.Lists.Warps import BananaportVanilla
+from DK64R.randomizer.Enums.VendorType import VendorType
+from DK64R.randomizer.Enums.Time import Time
+from DK64R.randomizer.Enums.Types import Types, BarrierItems
+from DK64R.randomizer.Lists.Item import ItemList
+from DK64R.randomizer.Enums.Maps import Maps
+from DK64R.randomizer.Lists.Warps import BananaportVanilla
 from randomizer.Patching.Library.Generic import IsItemSelected, getProgHintBarrierItem
-from worlds.dk64.DK64R.randomizer.Prices import AnyKongCanBuy, CanBuy
-from worlds.dk64.Items import DK64Item
+from DK64R.randomizer.Prices import AnyKongCanBuy, CanBuy
+from Items import DK64Item
 
 STARTING_SLAM = 0  # Currently we're assuming you always start with 1 slam
 

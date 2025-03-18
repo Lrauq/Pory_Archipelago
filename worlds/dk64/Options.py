@@ -2,10 +2,10 @@ import typing
 
 from Options import Choice, Range, Option, Toggle, DeathLink, DefaultOnToggle, OptionList
 
-from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsStringEnum
-from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsStringTypeMap
-from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsStringDataType
-from worlds.dk64.DK64R.randomizer.Enums.Settings import SettingsMap as DK64RSettingsMap
+from DK64R.randomizer.Enums.Settings import SettingsStringEnum
+from DK64R.randomizer.Enums.Settings import SettingsStringTypeMap
+from DK64R.randomizer.Enums.Settings import SettingsStringDataType
+from DK64R.randomizer.Enums.Settings import SettingsMap as DK64RSettingsMap
 
 
 # DK64_TODO: Get Options from DK64R

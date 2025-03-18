@@ -4,11 +4,11 @@ from BaseClasses import Item, ItemClassification
 from worlds.AutoWorld import World
 from types import SimpleNamespace
 
-from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
-from worlds.dk64.DK64R.randomizer.Lists import Item as DK64RItem
-from worlds.dk64.DK64R.randomizer.Enums.Items import Items as DK64RItems
-from worlds.dk64.DK64R.randomizer.Enums.Types import Types as DK64RTypes
-import worlds.dk64.DK64R.randomizer.ItemPool as DK64RItemPoolUtility
+from DK64R.randomizer.Enums.Levels import Levels
+from DK64R.randomizer.Lists import Item as DK64RItem
+from DK64R.randomizer.Enums.Items import Items as DK64RItems
+from DK64R.randomizer.Enums.Types import Types as DK64RTypes
+import DK64R.randomizer.ItemPool as DK64RItemPoolUtility
 
 BASE_ID = 0xD64000
 

@@ -3,22 +3,22 @@ import typing
 from BaseClasses import CollectionState, ItemClassification, MultiWorld, Region, Entrance, Location
 from worlds.AutoWorld import World
 
-from worlds.dk64.DK64R.randomizer.Enums.Collectibles import Collectibles
-from worlds.dk64.DK64R.randomizer.Enums.Events import Events
-from worlds.dk64.DK64R.randomizer.Enums.Items import Items
-from worlds.dk64.DK64R.randomizer.Enums.Kongs import Kongs
-from worlds.dk64.DK64R.randomizer.Enums.Levels import Levels
-from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
-from worlds.dk64.DK64R.randomizer.Enums.Regions import Regions
-from worlds.dk64.DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting, FasterChecksSelected
-from worlds.dk64.DK64R.randomizer.Enums.Types import Types
-from worlds.dk64.DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
-from worlds.dk64.DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
-from worlds.dk64.DK64R.randomizer.Patching.Library.Generic import IsItemSelected
-from worlds.dk64.Items import DK64Item
+from DK64R.randomizer.Enums.Collectibles import Collectibles
+from DK64R.randomizer.Enums.Events import Events
+from DK64R.randomizer.Enums.Items import Items
+from DK64R.randomizer.Enums.Kongs import Kongs
+from DK64R.randomizer.Enums.Levels import Levels
+from DK64R.randomizer.Enums.Locations import Locations
+from DK64R.randomizer.Enums.Regions import Regions
+from DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting, FasterChecksSelected
+from DK64R.randomizer.Enums.Types import Types
+from DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
+from DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
+from DK64R.randomizer.Patching.Library.Generic import IsItemSelected
+from Items import DK64Item
 from worlds.generic.Rules import set_rule
 from .Logic import LogicVarHolder
-from worlds.dk64.DK64R.randomizer.LogicFiles import (
+from DK64R.randomizer.LogicFiles import (
     AngryAztec,
     CreepyCastle,
     CrystalCaves,
@@ -30,7 +30,7 @@ from worlds.dk64.DK64R.randomizer.LogicFiles import (
     GloomyGalleon,
     Shops,
 )
-from worlds.dk64.DK64R.randomizer.CollectibleLogicFiles import (
+from DK64R.randomizer.CollectibleLogicFiles import (
     AngryAztec as AztecCollectibles,
     CreepyCastle as CastleCollectibles,
     CrystalCaves as CavesCollectibles,

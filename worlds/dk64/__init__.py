@@ -1,5 +1,4 @@
 import os
-import sys
 import typing
 import math
 import threading
@@ -8,13 +7,16 @@ import json
 import zipfile
 import codecs
 from io import BytesIO
+import sys
+sys.path.append('./worlds/dk64/')
+
 sys.path.append('./worlds/dk64/DK64R/')
 
-import worlds.dk64.DK64R.randomizer.ItemPool as DK64RItemPool
+import DK64R.randomizer.ItemPool as DK64RItemPool
 
 from BaseClasses import Item, MultiWorld, Tutorial, ItemClassification
-from worlds.dk64.DK64R.randomizer.Enums.Items import Items as DK64RItems
-from worlds.dk64.DK64R.randomizer.SettingStrings import decrypt_settings_string_enum
+from DK64R.randomizer.Enums.Items import Items as DK64RItems
+from DK64R.randomizer.SettingStrings import decrypt_settings_string_enum
 from .Items import DK64Item, full_item_table, setup_items
 from .Options import GenerateDK64Options, dk64_options
 from .Regions import all_locations, create_regions, connect_regions
@@ -22,19 +24,19 @@ from .Rules import set_rules
 from worlds.AutoWorld import WebWorld, World
 # import Patch
 from .Logic import LogicVarHolder
-from worlds.dk64.DK64R.randomizer.Spoiler import Spoiler
-from worlds.dk64.DK64R.randomizer.Settings import Settings
-from worlds.dk64.DK64R.randomizer.Enums.Settings import ShuffleLoadingZones
-from worlds.dk64.DK64R.randomizer.Patching.ApplyRandomizer import patching_response
-from worlds.dk64.DK64R import version
-from worlds.dk64.DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
-from worlds.dk64.DK64R.randomizer.Fill import ShuffleItems, ItemReference
-from worlds.dk64.DK64R.randomizer.CompileHints import compileMicrohints
-from worlds.dk64.DK64R.randomizer.Enums.Types import Types
-from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
-from worlds.dk64.DK64R.randomizer.Lists.Location import PreGivenLocations
+from DK64R.randomizer.Spoiler import Spoiler
+from DK64R.randomizer.Settings import Settings
+from DK64R.randomizer.Enums.Settings import ShuffleLoadingZones
+from DK64R.randomizer.Patching.ApplyRandomizer import patching_response
+from DK64R import version
+from DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
+from DK64R.randomizer.Fill import ShuffleItems, ItemReference
+from DK64R.randomizer.CompileHints import compileMicrohints
+from DK64R.randomizer.Enums.Types import Types
+from DK64R.randomizer.Enums.Locations import Locations
+from DK64R.randomizer.Lists.Location import PreGivenLocations
 from worlds.LauncherComponents import Component, components, Type, icon_paths, local_path, launch as launch_component
-import worlds.dk64.DK64R.randomizer.ShuffleExits as ShuffleExits
+import DK64R.randomizer.ShuffleExits as ShuffleExits
 
 def launch_client():
     from .DK64Client import launch
