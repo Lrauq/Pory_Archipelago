@@ -27,6 +27,7 @@ from worlds.dk64.DK64R import version
 from worlds.dk64.DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
 from worlds.dk64.DK64R.randomizer.Fill import ShuffleItems, ItemReference
 from worlds.dk64.DK64R.randomizer.CompileHints import compileMicrohints
+from worlds.dk64.DK64R.randomizer.Enums.Types import Types
 from worlds.dk64.DK64R.randomizer.Enums.Locations import Locations
 from worlds.dk64.DK64R.randomizer.Lists.Location import PreGivenLocations
 from worlds.LauncherComponents import Component, components, Type, icon_paths, local_path, launch as launch_component
@@ -79,6 +80,7 @@ class DK64World(World):
         settings_dict = decrypt_settings_string_enum(self.settings_string)
         settings = Settings(settings_dict)
         spoiler = Spoiler(settings)
+        spoiler.settings.shuffled_location_types.append(Types.ArchipelagoItem)
         self.logic_holder = LogicVarHolder(spoiler, self)
 
     @classmethod
@@ -99,7 +101,6 @@ class DK64World(World):
         self.logic_holder.spoiler.pkmn_snap_data = []
         if self.logic_holder.spoiler.settings.enemy_rando:
             randomize_enemies_0(self.logic_holder.spoiler)
-        ShuffleItems(self.logic_holder.spoiler)
 
     def create_regions(self) -> None:
         create_regions(self.multiworld, self.player, self.logic_holder)
@@ -151,6 +152,7 @@ class DK64World(World):
                     self.logic_holder.spoiler.LocationList[dk64_location_id].PlaceItem(self.logic_holder.spoiler, DK64RItems.NoItem)
                 else:
                     print(f"Location {ap_location.name} not found in DK64 location table.")
+            ShuffleItems(self.logic_holder.spoiler)
             self.logic_holder.spoiler.location_references = [
                 # DK Moves
                 ItemReference(DK64RItems.BaboonBlast, "Baboon Blast", "DK Japes Cranky"),
