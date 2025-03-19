@@ -387,27 +387,28 @@ class DK64Context(CommonContext):
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
             await super(DK64Context, self).server_auth(password_requested)
-
         if self.had_invalid_slot_data:
             # We are connecting when previously we had the wrong ROM or server - just in case
             # re-read the ROM so that if the user had the correct address but wrong ROM, we
             # allow a successful reconnect
             self.client.should_reset_auth = True
             self.had_invalid_slot_data = False
-
         while self.client.auth == None:
             await asyncio.sleep(0.1)
 
-            # Just return if we're closing
-            if self.exit_event.is_set():
-                return
-        self.auth = self.client.auth
+            # # Just return if we're closing
+            # if self.exit_event.is_set():
+            #     return
+            # Handler didn't set auth, ask user for slot name
+            if self.client.auth is None:
+                await self.get_username()
+                break
+        # self.auth = self.client.auth
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict):
-        if cmd == "Connected":
-            if self.slot is not None:
-                self.game = self.slot_info[self.slot].game
+        if cmd == "Connected":       
+            self.game = self.slot_info[self.slot].game
             self.slot_data = args.get("slot_data", {})
             self.client.players = self.player_names
 
