@@ -78,8 +78,13 @@ class DK64Client:
         # beat the game
         # the client handles the last pending item
         status = self.safe_to_send()
-        while not (await self.is_victory()) and status != 0:
-            time.sleep(0.1)
+        # while not (await self.is_victory()) and not status:
+        #     time.sleep(0.1)
+        #     print("CHECKING SAFE TO SEND")
+        #     print(status)
+        #     status = self.safe_to_send()
+        while not status:
+            await asyncio.sleep(0.1)
             status = self.safe_to_send()
         memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
 
@@ -321,7 +326,9 @@ class DK64Client:
         if len(self.recvd_checks) > current_deliver_count:
             # Get the next item in recvd_checks
             item = self.recvd_checks[current_deliver_count]
-            await self.recved_item_from_ap(item.item, item.name, item.player, current_deliver_count)
+            item_name = self.item_names.lookup_in_game(item.item)
+            print(item_name)
+            await self.recved_item_from_ap(item.item, item_name, item.player, current_deliver_count)
 
 
 class DK64Context(CommonContext):
@@ -336,7 +343,7 @@ class DK64Context(CommonContext):
 
     def __init__(self, server_address: typing.Optional[str], password: typing.Optional[str]) -> None:
         self.client = DK64Client()
-        self.client.game = self.game.upper()
+        self.client.game = self.game.upper() 
         self.client.remaining_checks = self.remaining_checks
         self.slot_data = {}
 
@@ -407,6 +414,7 @@ class DK64Context(CommonContext):
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict):
+        self.client.item_names = self.item_names
         if cmd == "Connected":       
             self.game = self.slot_info[self.slot].game
             self.slot_data = args.get("slot_data", {})
