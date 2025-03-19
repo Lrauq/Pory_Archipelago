@@ -147,15 +147,19 @@ class DK64World(World):
                             spoiler.first_move_item = dk64_loc.item
                 if dk64_location_id is not None and ap_location.item is not None:
                     ap_item = ap_location.item
+                    # Any item that isn't for this player is placed as an AP item, regardless of whether or not it could be a DK64 item
                     if ap_item.player != self.player:
                         spoiler.LocationList[dk64_location_id].PlaceItem(spoiler, DK64RItems.ArchipelagoItem)
+                    # Collectibles don't get placed in the LocationList
                     elif "Collectible" in ap_item.name:
                         continue
                     else:
                         dk64_item = DK64RItems[ap_item.name]
                         if dk64_item is not None:
                             dk64_location = spoiler.LocationList[dk64_location_id]
+                            # Most of these item restrictions should be handled by item rules, so this is a failsafe.
                             # Junk items can't be placed in shops, bosses, or arenas. Fortunately this is junk, so we can just patch a NoItem there instead.
+                            # Shops are allowed to get Junk items placed by AP in order to artificially slightly reduce the number of checks in shops.
                             if dk64_item in [DK64RItems.JunkMelon] and dk64_location.type in [Types.Shop, Types.Key, Types.Crown]:
                                 dk64_item = DK64RItems.NoItem
                             # Blueprints can't be on fairies for technical reasons. Instead we'll patch it in as an AP item and have AP handle it.

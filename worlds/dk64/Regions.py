@@ -16,7 +16,7 @@ from DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
 from DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
 from DK64R.randomizer.Patching.Library.Generic import IsItemSelected
 from Items import DK64Item
-from worlds.generic.Rules import set_rule
+from worlds.generic.Rules import add_item_rule, set_rule
 from .Logic import LogicVarHolder
 from DK64R.randomizer.LogicFiles import (
     AngryAztec,
@@ -136,6 +136,7 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
                 elif not logic_holder.checkFastCheck(FasterChecksSelected.factory_arcade_round_2) and region_name == "FactoryBaboonBlast":
                     continue
             # Starting move locations and Kongs may be shuffled but their locations are not relevant ever due to item placement restrictions
+            # V1 LIMITATION: Kong locations are always empty because we can't put the vast majority of items (including AP items) there yet
             if location_obj.type in (Types.TrainingBarrel, Types.PreGivenMove, Types.Kong):
                 continue
             # Dropsanity would otherwise flood the world with irrelevant locked locations, greatly slowing seed gen
@@ -167,6 +168,13 @@ def create_region(multiworld: MultiWorld, player: int, region_name: str, level: 
             # V1 LIMITATION: this will ignore minigame logic, so bonus barrels and Helm barrels must be autocompleted
             else:
                 set_rule(location, lambda state, location_logic=location_logic: hasDK64RLocation(state, logic_holder, location_logic))
+            # Item placement limitations! These only apply to items in your own world, as other worlds' items will be AP items, and those can be anywhere.
+            # Fairy locations cannot have your own world's blueprints on them for technical reasons.
+            if location_obj.type == Types.Fairy:
+                add_item_rule(location, lambda item: not (item.player == player and "Blueprint" in item.name))
+            # Bosses and Crowns cannot have Junk due to technical reasons
+            if location_obj.type in (Types.Key, Types.Crown):
+                add_item_rule(location, lambda item: not (item.player == player and "Junk" in item.name))
             new_region.locations.append(location)
             # print("Adding location: " + location_obj.name + " | " + str(location_obj.type) + " | " + str(location_obj.kong) + " | " + str(loc_id))
 
