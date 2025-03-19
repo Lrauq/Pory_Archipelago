@@ -11,7 +11,7 @@ import asyncio
 import colorama
 import time
 import typing
-from client.common import N64Exception, DK64MemoryMap, create_task_log_exception
+from client.common import DK64MemoryMap, create_task_log_exception
 from client.pj64 import PJ64Client
 from client.items import item_ids, item_names_to_id
 from client.check_flag_locations import location_flag_to_name, location_name_to_flag
@@ -57,7 +57,7 @@ class DK64Client:
                 self.stop_bizhawk_spam = False
                 logger.info("PJ64 Connected to ROM!")
                 return
-            except (N64Exception, BlockingIOError, TimeoutError, ConnectionResetError):
+            except (BlockingIOError, TimeoutError, ConnectionResetError):
                 await asyncio.sleep(1.0)
                 pass
 
@@ -304,7 +304,7 @@ class DK64Client:
         while not self.check_safe_gameplay():
             if self.should_reset_auth:
                 self.should_reset_auth = False
-                raise N64Exception("Resetting due to wrong archipelago server")
+                raise Exception("Resetting due to wrong archipelago server")
         logger.info("Game connection ready!")
 
     async def is_victory(self):

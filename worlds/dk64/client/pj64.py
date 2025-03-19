@@ -6,7 +6,19 @@ import os
 from configparser import ConfigParser
 from Utils import open_filename
 from Utils import get_settings
-from worlds.dk64.client.common import N64Exception
+
+
+class N64Exception(Exception):
+    """
+    Custom exception class for N64-related errors.
+
+    This exception is raised when an error specific to N64 operations occurs.
+
+    Attributes:
+        message (str): Explanation of the error.
+    """
+
+    pass
 
 
 class PJ64Client:

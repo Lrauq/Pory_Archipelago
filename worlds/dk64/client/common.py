@@ -23,19 +23,6 @@ class DK64MemoryMap:
     end_credits = 0x1B0
 
 
-class N64Exception(Exception):
-    """
-    Custom exception class for N64-related errors.
-
-    This exception is raised when an error specific to N64 operations occurs.
-
-    Attributes:
-        message (str): Explanation of the error.
-    """
-
-    pass
-
-
 all_tasks = set()
 
 
