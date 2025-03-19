@@ -430,12 +430,11 @@ class DK64Context(CommonContext):
             for check in dk64_checks:
                 check_name = check_id_to_name.get(check)
                 if check_name:
-                    built_checks_list.append(check_name)
+                    built_checks_list.append(check)
                     continue
                 item = item_ids.get(check)
                 if item:
-                    item_name = item.get("name")
-                    built_checks_list.append(item_name)
+                    built_checks_list.append(check)
             self.new_checks(built_checks_list)
 
         # yield to allow UI to start
