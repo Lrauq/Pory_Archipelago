@@ -275,6 +275,8 @@ class DK64World(World):
         hash = spoiler.settings.seed_hash
         spoiler_log = {}
         spoiler_log["Generated Time"] = timestamp
+        spoiler_log["Settings"] = {}
+        spoiler_log["Cosmetics"] = {}
         # Zip all the data into a single file.
         zip_data = BytesIO()
         with zipfile.ZipFile(zip_data, "w") as zip_file:
@@ -282,10 +284,10 @@ class DK64World(World):
             zip_file.writestr("patch", patch)
             zip_file.writestr("hash", str(hash))
             zip_file.writestr("spoiler_log", str(json.dumps(spoiler_log)))
-            zip_file.writestr("seed_id", str(spoiler.settings.seed_id))
             zip_file.writestr("generated_time", str(timestamp))
             zip_file.writestr("version", version.version)
-            zip_file.writestr("seed_number", "archipelago-seed-" + str(player_id))
+            zip_file.writestr("seed_number", "ap-patch-player-" + str(player_id))
+            zip_file.writestr("seed_id", "ap-seed-player-" + str(player_id))
         zip_data.seek(0)
         # Convert the zip to a string of base64 data
         zip_conv = codecs.encode(zip_data.getvalue(), "base64").decode()
