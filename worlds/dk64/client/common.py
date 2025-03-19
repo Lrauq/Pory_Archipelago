@@ -16,6 +16,7 @@ class DK64MemoryMap:
     arch_items = 0x004
     fed_string = 0x008
     connection = 0x029
+    fed_subtitle = 0x02B
     EEPROM = 0x807ECEA8
     CurrentGamemode = 0x80755314
     NextGamemode = 0x80755318

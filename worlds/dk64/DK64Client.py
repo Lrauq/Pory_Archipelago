@@ -90,8 +90,8 @@ class DK64Client:
 
         next_index += 1
         self.n64_client.write_u8(memory_location + DK64MemoryMap.counter_offset, [next_index])
-        item_sent_message = f"Received item {item_name} from {from_player}"
-        self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, item_sent_message)
+        self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, f"{item_name}")
+        self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_subtitle, f"From {from_player}")
         if item_ids.get(item_id):
             if item_ids[item_id].get("flag_id"):
                 self.setFlag(item_ids[item_id].get("flag_id"))
@@ -135,6 +135,7 @@ class DK64Client:
                 return (val & (1 << (p_value - 1))) != 0
         else:
             return self.readFlag(p_value) != 0
+
     def _build_flag_lookup(self):
         """Cache flag mappings to avoid repeated reads."""
         self.flag_lookup = {}
@@ -159,6 +160,7 @@ class DK64Client:
         if item_index > 0:
             offset = item_index - 1
         return ((value >> offset) & 1) != 0
+
     def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None) -> bool:
         # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3=bfi
         # flag_index: as expected
@@ -187,7 +189,6 @@ class DK64Client:
                 return self.readFlag(target_flag) != 0
             else:
                 return self.readFlag(flag_index) != 0
-    
 
     async def readChecks(self, cb):
         """Run checks in parallel using asyncio."""
@@ -200,7 +201,7 @@ class DK64Client:
                 # Assuming we did find it in location_name_to_flag
                 check_status = self.getCheckStatus("location", check)
                 if check_status:
-                    logger.info(f"Found {name} via location_name_to_flag")
+                    # logger.info(f"Found {name} via location_name_to_flag")
                     self.remaining_checks.remove(id)
                     new_checks.append(id)
             # If its not there using the id lets try to get it via item_ids
@@ -214,7 +215,7 @@ class DK64Client:
                     else:
                         check_status = self.getCheckStatus("location", flag_id)
                         if check_status:
-                            logger.info(f"Found {name} via item_ids")
+                            # logger.info(f"Found {name} via item_ids")
                             self.remaining_checks.remove(id)
                             new_checks.append(id)
                 else:
@@ -223,7 +224,7 @@ class DK64Client:
                     if name == "The Banana Fairy's Gift":
                         check_status = self.getCheckStatus("shop", None, 3, None, None)
                         if check_status:
-                            logger.info(f"Found {name} via location_name_to_flag")
+                            # logger.info(f"Found {name} via location_name_to_flag")
                             self.remaining_checks.remove(id)
                             new_checks.append(id)
                         continue
@@ -268,7 +269,7 @@ class DK64Client:
                             continue
                         check_status = self.getCheckStatus("shop", None, shop_index, level_index, kong_index)
                         if check_status:
-                            logger.info(f"Found {name} via shop")
+                            # logger.info(f"Found {name} via shop")
                             self.remaining_checks.remove(id)
                             new_checks.append(id)
                         continue
@@ -328,7 +329,8 @@ class DK64Client:
             item = self.recvd_checks[current_deliver_count]
             item_name = self.item_names.lookup_in_game(item.item)
             print(item_name)
-            await self.recved_item_from_ap(item.item, item_name, item.player, current_deliver_count)
+            player_name = self.players.get(item.player)
+            await self.recved_item_from_ap(item.item, item_name, player_name, current_deliver_count)
 
 
 class DK64Context(CommonContext):
@@ -343,7 +345,7 @@ class DK64Context(CommonContext):
 
     def __init__(self, server_address: typing.Optional[str], password: typing.Optional[str]) -> None:
         self.client = DK64Client()
-        self.client.game = self.game.upper() 
+        self.client.game = self.game.upper()
         self.client.remaining_checks = self.remaining_checks
         self.slot_data = {}
 
@@ -415,7 +417,7 @@ class DK64Context(CommonContext):
 
     def on_package(self, cmd: str, args: dict):
         self.client.item_names = self.item_names
-        if cmd == "Connected":       
+        if cmd == "Connected":
             self.game = self.slot_info[self.slot].game
             self.slot_data = args.get("slot_data", {})
             self.client.players = self.player_names
@@ -489,6 +491,7 @@ class DK64Context(CommonContext):
             except (asyncio.TimeoutError, TimeoutError, ConnectionResetError):
                 await asyncio.sleep(1.0)
 
+
 def launch():
     async def main():
         parser = get_base_parser(description="Donkey Kong 64 Client.")
@@ -507,9 +510,11 @@ def launch():
 
         await ctx.exit_event.wait()
         await ctx.shutdown()
+
     colorama.init()
     asyncio.run(main())
     colorama.deinit()
+
 
 if __name__ == "__main__":
     launch()
