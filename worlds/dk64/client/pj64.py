@@ -2,6 +2,10 @@
 
 import socket
 import json
+import os
+from configparser import ConfigParser
+from Utils import open_filename
+from Utils import get_settings
 from worlds.dk64.client.common import N64Exception
 
 
@@ -18,11 +22,82 @@ class PJ64Client:
             address (str): The IP address to connect to. Defaults to "127.0.0.1".
             port (int): The port number to connect to. Defaults to 1337.
         """
+        self._check_client()
         self.address = address
         self.port = port
         self.socket = None
         self.connected_message = False
         self._connect()
+
+    def _check_client(self):
+        """Ensures the Project 64 executable and the required adapter script are properly set up.
+
+        Raises:
+            N64Exception: If the Project 64 executable is not found or if the `ap_adapter.js` file is in use.
+        """
+        options = get_settings()
+        executable = options.get("project64_options", {}).get("executable")
+        if not executable:
+            executable = open_filename("Project 64 4.0 Executable", (("Project64 Executable", (".exe",)),), "Project64.exe")
+            if not executable:
+                raise N64Exception("Project 64 executable not found.")
+            options.update({"project64_options": {"executable": executable}})
+            options.save()
+
+        # Check if the file ap_adapter exists in the subfolder of the executable, the folder Scripts
+        # If it does not exist, copy it from worlds/dk64/client/adapter.js
+        adapter_path = os.path.join(os.path.dirname(executable), "Scripts", "ap_adapter.js")
+        # Read the existing file from the world
+        with open("worlds/dk64/client/adapter.js", "r") as f:
+            adapter_content = f.read()
+        # Check if the file is in use
+        matching_content = False
+        # Check if the contents match
+        with open(adapter_path, "r") as f:
+            if f.read() == adapter_content:
+                matching_content = True
+        try:
+            if not matching_content:
+                with open(adapter_path, "w") as f:
+                    f.write(adapter_content)
+        except PermissionError:
+            raise N64Exception("ap_adapter.js is in use. Please close the adapter file in PJ64 and try again.")
+        self._verify_pj64_config(os.path.join(os.path.dirname(executable), "Config", "Project64.cfg"))
+
+    def _verify_pj64_config(self, config_file):
+        """Verifies and updates the configuration file for Project64.
+        This method ensures that the specified configuration file contains the
+        required sections and settings for proper operation. If the necessary
+        sections or settings are missing, they are added or updated accordingly.
+        Args:
+            config_file (str): The path to the configuration file to be verified and updated.
+        Behavior:
+            - Ensures the [Settings] section exists and sets 'Basic Mode' to "0".
+            - Ensures the [Debugger] section exists and sets 'Debugger' to "1".
+            - Writes the updated configuration back to the file.
+        Note:
+            If an exception occurs while writing to the file, it is silently ignored.
+        """
+        # Read the CFG file
+        config = ConfigParser()
+        config.read(config_file)
+
+        # Ensure the [Settings] section exists and update 'Basic Mode'
+        if "Settings" not in config:
+            config.add_section("Settings")
+        config.set("Settings", "Basic Mode", "0")
+
+        # Ensure the [Debugger] section exists and set 'Debugger'
+        if "Debugger" not in config:
+            config.add_section("Debugger")
+        config.set("Debugger", "Debugger", "1")
+
+        # Write the updated settings back to the file
+        try:
+            with open(config_file, "w") as configfile:
+                config.write(configfile, space_around_delimiters=False)
+        except Exception:
+            pass
 
     def _connect(self):
         """
@@ -84,7 +159,10 @@ class PJ64Client:
             self._connect()
             address = hex(address)
             self.socket.send(f"read u8 {address} 1".encode())
-            data = int(self.socket.recv(1024).decode())
+            server_response = self.socket.recv(1024).decode()
+            if not server_response:
+                raise N64Exception("No data received from the server")
+            data = int(server_response)
             return data
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             raise N64Exception("Connection refused or reset")
@@ -106,7 +184,10 @@ class PJ64Client:
             self._connect()
             address = hex(address)
             self.socket.send(f"read u16 {address} 2".encode())
-            data = int(self.socket.recv(1024).decode())
+            server_response = self.socket.recv(1024).decode()
+            if not server_response:
+                raise N64Exception("No data received from the server")
+            data = int(server_response)
             return data
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             raise N64Exception("Connection refused or reset")
@@ -128,7 +209,10 @@ class PJ64Client:
             self._connect()
             address = hex(address)
             self.socket.send(f"read u32 {address} 4".encode())
-            data = int(self.socket.recv(1024).decode())
+            server_response = self.socket.recv(1024).decode()
+            if not server_response:
+                raise N64Exception("No data received from the server")
+            data = int(server_response)
             return data
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             raise N64Exception("Connection refused or reset")

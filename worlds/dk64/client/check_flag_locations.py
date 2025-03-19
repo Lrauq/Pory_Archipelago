@@ -337,7 +337,7 @@ location_flag_to_name = {
     0x29F: "Aztec Dirt: Chunky Temple",
     0x2A0: "Factory Dirt: Dark Room",
     0x2A1: "Isles Dirt: Cabin Isle",
-    0X2A2: "Isles Dirt: Under Caves Lobby",
+    0x2A2: "Isles Dirt: Under Caves Lobby",
     0x2A3: "Isles Dirt: Aztec Roof",
     0x2A4: "Aztec Dirt: Oasis",
     0x2A5: "Forest Dirt: Mills Grass",
