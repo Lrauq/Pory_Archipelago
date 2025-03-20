@@ -93,9 +93,9 @@ class DK64Client:
         self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, f"{item_name}")
         self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_subtitle, f"From {from_player}")
         if item_ids.get(item_id):
-            if item_ids[item_id].get("flag_id"):
+            if item_ids[item_id].get("flag_id", None) != None:
                 self.setFlag(item_ids[item_id].get("flag_id"))
-            elif item_ids[item_id].get("fed_id"):
+            elif item_ids[item_id].get("fed_id", None) != None:
                 self.writeFedData(item_ids[item_id].get("fed_id"))
             else:
                 logger.warning(f"Item {item_name} has no flag or fed id")
