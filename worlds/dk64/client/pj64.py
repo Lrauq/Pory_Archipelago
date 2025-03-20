@@ -65,9 +65,12 @@ class PJ64Client:
         # Check if the file is in use
         matching_content = False
         # Check if the contents match
-        with open(adapter_path, "r") as f:
-            if f.read() == adapter_content:
-                matching_content = True
+        try:
+            with open(adapter_path, "r") as f:
+                if f.read() == adapter_content:
+                    matching_content = True
+        except FileNotFoundError:
+            pass
         try:
             if not matching_content:
                 with open(adapter_path, "w") as f:
