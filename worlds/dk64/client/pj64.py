@@ -1,6 +1,7 @@
 """Contains the PJ64Client class for interacting with Project64."""
 
 import socket
+import psutil
 import json
 import os
 from configparser import ConfigParser
@@ -71,13 +72,24 @@ class PJ64Client:
                     matching_content = True
         except FileNotFoundError:
             pass
-        try:
-            if not matching_content:
+        if not matching_content:
+            try:
                 with open(adapter_path, "w") as f:
                     f.write(adapter_content)
-        except PermissionError:
-            raise N64Exception("ap_adapter.js is in use. Please close the adapter file in PJ64 and try again.")
+            except PermissionError:
+                raise N64Exception("Unable to add adapter file to Project64, you may need to run this script as an administrator or close Project64.")
         self._verify_pj64_config(os.path.join(os.path.dirname(executable), "Config", "Project64.cfg"))
+        # Check if project 64 is running
+        if not self._is_exe_running(os.path.basename(executable)):
+            # Run project 64
+            os.popen(f'"{executable}"')
+
+    def _is_exe_running(self, exe_name):
+        """Check if a given executable is running."""
+        for process in psutil.process_iter(['name']):
+            if process.info['name'] and process.info['name'].lower() == exe_name.lower():
+                return True
+        return False
 
     def _verify_pj64_config(self, config_file):
         """Verifies and updates the configuration file for Project64.
