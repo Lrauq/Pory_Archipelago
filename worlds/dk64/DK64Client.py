@@ -196,93 +196,64 @@ class DK64Client:
                 return self.readFlag(flag_index) != 0
 
     async def readChecks(self, cb):
-        """Run checks in parallel using asyncio."""
+        """Run checks in parallel using asyncio with optimized processing."""
         new_checks = []
-        for id in self.remaining_checks:
+        remove_checks = set()  # Collect items to remove after iteration
+
+        level_map = {
+            "Japes": 0, "Aztec": 1, "Factory": 2, "Galleon": 3,
+            "Forest": 4, "Caves": 5, "Castle": 6, "Isles": 7
+        }
+        shop_map = {"Cranky": 0, "Funky": 1, "Candy": 2}
+        kong_map = {"Donkey": 0, "Diddy": 1, "Lanky": 2, "Tiny": 3, "Chunky": 4}
+
+        for id in self.remaining_checks[:]:  # Iterate over a copy to avoid modification issues
             name = check_id_to_name.get(id)
-            # Try to get the check via location_name_to_flag
-            check = location_name_to_flag.get(name)
-            if check:
-                # Assuming we did find it in location_name_to_flag
-                check_status = self.getCheckStatus("location", check)
-                if check_status:
-                    # logger.info(f"Found {name} via location_name_to_flag")
-                    self.remaining_checks.remove(id)
-                    new_checks.append(id)
-            # If its not there using the id lets try to get it via item_ids
-            else:
-                check = item_ids.get(id)
-                if check:
-                    flag_id = check.get("flag_id")
-                    if not flag_id:
-                        # logger.error(f"Item {name} has no flag_id")
-                        continue
-                    else:
-                        check_status = self.getCheckStatus("location", flag_id)
-                        if check_status:
-                            # logger.info(f"Found {name} via item_ids")
-                            self.remaining_checks.remove(id)
-                            new_checks.append(id)
-                else:
-                    # If the content is 3 parts separated by a space, we can assume it's a shop check
-                    content = name.split(" ")
-                    if name == "The Banana Fairy's Gift":
-                        check_status = self.getCheckStatus("shop", None, 3, None, None)
-                        if check_status:
-                            # logger.info(f"Found {name} via location_name_to_flag")
-                            self.remaining_checks.remove(id)
-                            new_checks.append(id)
-                        continue
-                    elif len(content) == 3:
-                        level_index = None
-                        shop_index = None
-                        kong_index = None
-                        if content[0] == "Japes":
-                            level_index = 0
-                        elif content[0] == "Aztec":
-                            level_index = 1
-                        elif content[0] == "Factory":
-                            level_index = 2
-                        elif content[0] == "Galleon":
-                            level_index = 3
-                        elif content[0] == "Forest":
-                            level_index = 4
-                        elif content[0] == "Caves":
-                            level_index = 5
-                        elif content[0] == "Castle":
-                            level_index = 6
-                        elif content[0] == "Isles":
-                            level_index = 7
-                        if content[1] == "Cranky":
-                            shop_index = 0
-                        elif content[1] == "Funky":
-                            shop_index = 1
-                        elif content[1] == "Candy":
-                            shop_index = 2
-                        if content[2] == "Donkey":
-                            kong_index = 0
-                        elif content[2] == "Diddy":
-                            kong_index = 1
-                        elif content[2] == "Lanky":
-                            kong_index = 2
-                        elif content[2] == "Tiny":
-                            kong_index = 3
-                        elif content[2] == "Chunky":
-                            kong_index = 4
-                        # If any of these are not set, continue
-                        if level_index is None or shop_index is None or kong_index is None:
-                            continue
-                        check_status = self.getCheckStatus("shop", None, shop_index, level_index, kong_index)
-                        if check_status:
-                            # logger.info(f"Found {name} via shop")
-                            self.remaining_checks.remove(id)
-                            new_checks.append(id)
-                        continue
+            if not name:
                 continue
+
+            # Check location_name_to_flag first
+            check = location_name_to_flag.get(name)
+            if check and self.getCheckStatus("location", check):
+                new_checks.append(id)
+                remove_checks.add(id)
+                continue
+
+            # Check item_ids for flag_id
+            check = item_ids.get(id)
+            if check:
+                flag_id = check.get("flag_id")
+                if flag_id and self.getCheckStatus("location", flag_id):
+                    new_checks.append(id)
+                    remove_checks.add(id)
+                continue
+
+            # Special case: "The Banana Fairy's Gift"
+            if name == "The Banana Fairy's Gift" and self.getCheckStatus("shop", None, 3, None, None):
+                new_checks.append(id)
+                remove_checks.add(id)
+                continue
+
+            # Shop Check Processing (Three-word names)
+            content = name.split(" ")
+            if len(content) == 3:
+                level_index = level_map.get(content[0])
+                shop_index = shop_map.get(content[1])
+                kong_index = kong_map.get(content[2])
+
+                if None not in (level_index, shop_index, kong_index):
+                    if self.getCheckStatus("shop", None, shop_index, level_index, kong_index):
+                        new_checks.append(id)
+                        remove_checks.add(id)
+
+        # Remove processed checks while keeping the original list
+        self.remaining_checks = [id for id in self.remaining_checks if id not in remove_checks]
 
         if new_checks:
             cb(new_checks)
         return True
+
+
 
     def started_file(self):
         # Checks to see if the file has been started
