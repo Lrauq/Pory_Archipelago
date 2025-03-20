@@ -32,6 +32,8 @@ class DK64Client:
     remaining_checks = []
     flag_lookup = None
     seed_started = False
+    sent_checks = []
+    item_names = None
     memory_pointer = None
 
     async def wait_for_pj64(self):
@@ -250,6 +252,10 @@ class DK64Client:
         self.remaining_checks = [id for id in self.remaining_checks if id not in remove_checks]
 
         if new_checks:
+            if self.item_names:
+                for check in new_checks:
+                    lookup = self.item_names.lookup_in_slot(check)
+                    self.sent_checks.append(lookup)
             cb(new_checks)
         return True
 
@@ -310,7 +316,18 @@ class DK64Client:
             print(item_name)
             player_name = self.players.get(item.player)
             await self.recved_item_from_ap(item.item, item_name, player_name, current_deliver_count)
-
+        
+        if len(self.sent_checks) > 0:
+            cloned_checks = self.sent_checks.copy()
+            for item_name in cloned_checks:
+                status = self.safe_to_send()
+                while not status:
+                    await asyncio.sleep(0.1)
+                    status = self.safe_to_send()
+                # Strip out special characters from item name
+                stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
+                self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
+                self.sent_checks.remove(item_name)
 
 class DK64Context(CommonContext):
     tags = {"AP"}
@@ -414,7 +431,6 @@ class DK64Context(CommonContext):
             await self.send_victory()
 
         def on_item_get(dk64_checks):
-            # checks = [item_ids[check.id] for check in dk64_checks]
             built_checks_list = []
             for check in dk64_checks:
                 check_name = check_id_to_name.get(check)
