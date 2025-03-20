@@ -117,6 +117,9 @@ class DK64World(World):
         itempool: typing.List[DK64Item] = setup_items(self)
         self.multiworld.itempool += itempool
 
+    def get_filler_item_name(self) -> str:
+        return DK64RItems.JunkMelon.name
+
     def set_rules(self):
         set_rules(self.multiworld, self.player)
 
