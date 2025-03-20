@@ -85,9 +85,7 @@ class DK64World(World):
         super().__init__(multiworld, player)
         self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKC4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
         settings_dict = decrypt_settings_string_enum(self.settings_string)
-        settings_dict["seed"] = multiworld.seed + player
-        random.seed(settings_dict["seed"])
-        settings = Settings(settings_dict)
+        settings = Settings(settings_dict, multiworld.random)
         spoiler = Spoiler(settings)
         spoiler.settings.shuffled_location_types.append(Types.ArchipelagoItem)
         self.logic_holder = LogicVarHolder(spoiler, self)
@@ -131,6 +129,7 @@ class DK64World(World):
         try:
             spoiler = self.logic_holder.spoiler
             spoiler.settings.archipelago = True
+            spoiler.settings.random = self.multiworld.per_slot_randoms[self.player]
             spoiler.pregiven_items = []
             # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
             for ap_location in self.multiworld.get_locations(self.player):
