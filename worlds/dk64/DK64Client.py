@@ -66,7 +66,7 @@ class DK64Client:
     async def reset_auth(self):
         if not self.memory_pointer:
             self.memory_pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-        self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, [0xFF])
+        self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, 0xFF)
 
     async def wait_and_init_tracker(self):
         await self.wait_for_game_ready()
@@ -93,7 +93,7 @@ class DK64Client:
         # Strip out special characters from item name
         stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
         stripped_player_name = "".join(e for e in from_player if str(e).isalnum() or str(e) == " ")
-        self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.counter_offset, [next_index])
+        self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.counter_offset, next_index)
         self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
         self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"From {stripped_player_name}")
         if item_ids.get(item_id):
@@ -112,7 +112,7 @@ class DK64Client:
             await asyncio.sleep(0.1)
             if current_fed_item == 0:
                 break
-        self.n64_client.write_u8(self.memory_pointer + 0x7, [fed_item])
+        self.n64_client.write_u8(self.memory_pointer + 0x7, fed_item)
 
     def check_safe_gameplay(self):
         current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
@@ -271,7 +271,7 @@ class DK64Client:
         shift = index & 7
         offset = DK64MemoryMap.EEPROM + byte_index
         val = self.n64_client.read_u8(offset)
-        self.n64_client.write_u8(offset, [val | (1 << shift)])
+        self.n64_client.write_u8(offset, val | (1 << shift))
         return 1
 
     def readFlag(self, index: int) -> int:

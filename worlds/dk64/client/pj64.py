@@ -181,7 +181,7 @@ class PJ64Client:
 
     def _write_memory(self, command, address, data):
         """Writes data to memory and returns the emulator response."""
-        return self._send_command(f"{command} {hex(address)} {data}")
+        return self._send_command(f"{command} {hex(address)} [{data}]")
 
     def write_u8(self, address, data):
         """Writes an 8-bit unsigned integer to memory."""
