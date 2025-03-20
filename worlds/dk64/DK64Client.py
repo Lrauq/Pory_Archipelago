@@ -63,7 +63,7 @@ class DK64Client:
                 await asyncio.sleep(1.0)
                 pass
 
-    async def reset_auth(self):
+    async def validate_client_connection(self):
         if not self.memory_pointer:
             self.memory_pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
         self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, 0xFF)
@@ -439,21 +439,15 @@ class DK64Context(CommonContext):
                 # this isn't totally neccessary, but is extra safety against cross-ROM contamination
                 self.client.recvd_checks.clear()
                 await self.client.wait_for_pj64()
-                await self.client.reset_auth()
+                await self.client.validate_client_connection()
 
-                # If we find ourselves with new auth after the reset, reconnect
-                if self.auth and self.client.auth != self.auth:
-                    # It would be neat to reconnect here, but connection needs this loop to be running
-                    logger.info("Detected new ROM, disconnecting...")
-                    await self.disconnect()
-                    continue
                 if not self.client.recvd_checks:
                     await self.sync()
 
                 # await self.client.wait_and_init_tracker()
                 await asyncio.sleep(1.0)
                 while True:
-                    await self.client.reset_auth()
+                    await self.client.validate_client_connection()
                     status = self.client.check_safe_gameplay()
                     if status == False:
                         await asyncio.sleep(5)
