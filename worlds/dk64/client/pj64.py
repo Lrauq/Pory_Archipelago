@@ -285,7 +285,7 @@ class PJ64Client:
             self._connect()
             address = hex(address)
             data = str(data).upper()
-            self.socket.send(f"write bytestring {address} {data}".encode())
+            self.socket.send(f"write bytestring {address} {data}\x00".encode())
             data = self.socket.recv(1024).decode()
             return data
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
