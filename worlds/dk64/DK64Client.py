@@ -252,10 +252,6 @@ class DK64Client:
         self.remaining_checks = [id for id in self.remaining_checks if id not in remove_checks]
 
         if new_checks:
-            if self.item_names:
-                for check in new_checks:
-                    lookup = self.item_names.lookup_in_slot(check)
-                    self.sent_checks.append(lookup)
             cb(new_checks)
         return True
 
@@ -319,15 +315,19 @@ class DK64Client:
         
         if len(self.sent_checks) > 0:
             cloned_checks = self.sent_checks.copy()
-            for item_name in cloned_checks:
+            for item in cloned_checks:
                 status = self.safe_to_send()
                 while not status:
                     await asyncio.sleep(0.1)
                     status = self.safe_to_send()
                 # Strip out special characters from item name
+                item_name = item[0]
+                sender = item[1]
                 stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
+                stripped_player_name = "".join(e for e in sender if str(e).isalnum() or str(e) == " ")
                 self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
-                self.sent_checks.remove(item_name)
+                self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"To {stripped_player_name}")
+                self.sent_checks.remove(item)
 
 class DK64Context(CommonContext):
     tags = {"AP"}
@@ -405,9 +405,12 @@ class DK64Context(CommonContext):
             # if self.exit_event.is_set():
             #     return
             # Handler didn't set auth, ask user for slot name
-            if self.client.auth is None:
-                await self.get_username()
-                break
+            player_id = "Player 1"
+            self.auth = player_id
+            self.client.auth = self.auth
+            # if self.client.auth is None:
+            #      await self.get_username()
+            #     break
         # self.auth = self.client.auth
         await self.send_connect()
 
@@ -421,7 +424,15 @@ class DK64Context(CommonContext):
         if cmd == "ReceivedItems":
             for index, item in enumerate(args["items"], start=args["index"]):
                 self.client.recvd_checks.append(item)
-
+        if cmd == "PrintJSON":
+            # For each item in the list, if theres a LocationID in it, check if the player is our slot
+            if args.get("type") == "ItemSend":
+                sender = args.get("item").player == self.slot
+                player = args.get("receiving")
+                item_name = self.item_names.lookup_in_game(args.get("item").item, self.slot_info[player].game)
+                if sender:
+                    player_name = self.player_names.get(player)
+                    self.client.sent_checks.append((item_name, player_name))
     async def sync(self):
         sync_msg = [{"cmd": "Sync"}]
         await self.send_msgs(sync_msg)
