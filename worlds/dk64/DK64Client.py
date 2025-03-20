@@ -97,10 +97,8 @@ class DK64Client:
         self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_subtitle, f"From {stripped_player_name}")
         if item_ids.get(item_id):
             if item_ids[item_id].get("flag_id", None) != None:
-                print(item_ids[item_id].get("flag_id", None))
                 self.setFlag(item_ids[item_id].get("flag_id"))
             elif item_ids[item_id].get("fed_id", None) != None:
-                print(item_ids[item_id].get("fed_id", None))
                 await self.writeFedData(item_ids[item_id].get("fed_id"))
             else:
                 logger.warning(f"Item {item_name} has no flag or fed id")
@@ -114,7 +112,7 @@ class DK64Client:
             await asyncio.sleep(0.1)
             if current_fed_item == 0:
                 break
-        self.n64_client.write_u8(pointer + 0x7, fed_item)
+        self.n64_client.write_u8(pointer + 0x7, [fed_item])
 
     def check_safe_gameplay(self):
         current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
