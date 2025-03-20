@@ -92,30 +92,29 @@ class DK64Client:
         # Strip out special characters from item name
         stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
         stripped_player_name = "".join(e for e in from_player if str(e).isalnum() or str(e) == " ")
+        self.n64_client.write_u8(memory_location + DK64MemoryMap.counter_offset, [next_index])
         self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, f"{stripped_item_name}")
         self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_subtitle, f"From {stripped_player_name}")
         if item_ids.get(item_id):
             if item_ids[item_id].get("flag_id", None) != None:
                 print(item_ids[item_id].get("flag_id", None))
-                resp = self.setFlag(item_ids[item_id].get("flag_id"))
-                if resp:
-                    self.n64_client.write_u8(memory_location + DK64MemoryMap.counter_offset, [next_index])
+                self.setFlag(item_ids[item_id].get("flag_id"))
             elif item_ids[item_id].get("fed_id", None) != None:
                 print(item_ids[item_id].get("fed_id", None))
-                resp = self.writeFedData(item_ids[item_id].get("fed_id"))
-                if resp:
-                    self.n64_client.write_u8(memory_location + DK64MemoryMap.counter_offset, [next_index])
+                await self.writeFedData(item_ids[item_id].get("fed_id"))
             else:
                 logger.warning(f"Item {item_name} has no flag or fed id")
 
-    def writeFedData(self, fed_item):
+    async def writeFedData(self, fed_item):
         pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
         current_fed_item = self.n64_client.read_u32(pointer + DK64MemoryMap.arch_items)
-        if current_fed_item != 0:
-            # If item is being processed, don't update
-            return False
+        # If item is being processed, don't update
+        while current_fed_item != 0:
+            current_fed_item = self.n64_client.read_u32(pointer + DK64MemoryMap.arch_items)
+            await asyncio.sleep(0.1)
+            if current_fed_item == 0:
+                break
         self.n64_client.write_u8(pointer + 0x7, fed_item)
-        return True
 
     def check_safe_gameplay(self):
         current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
