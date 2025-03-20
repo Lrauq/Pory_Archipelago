@@ -31,6 +31,8 @@ class DK64Client:
     stop_bizhawk_spam = False
     remaining_checks = []
     flag_lookup = None
+    seed_started = False
+    memory_pointer = None
 
     async def wait_for_pj64(self):
         clear_waiting_message = True
@@ -62,8 +64,9 @@ class DK64Client:
                 pass
 
     async def reset_auth(self):
-        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-        self.n64_client.write_u8(memory_location + DK64MemoryMap.connection, [0xFF])
+        if not self.memory_pointer:
+            self.memory_pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
+        self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, [0xFF])
 
     async def wait_and_init_tracker(self):
         await self.wait_for_game_ready()
@@ -86,15 +89,13 @@ class DK64Client:
         while not status:
             await asyncio.sleep(0.1)
             status = self.safe_to_send()
-        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-
         next_index += 1
         # Strip out special characters from item name
         stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
         stripped_player_name = "".join(e for e in from_player if str(e).isalnum() or str(e) == " ")
-        self.n64_client.write_u8(memory_location + DK64MemoryMap.counter_offset, [next_index])
-        self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_string, f"{stripped_item_name}")
-        self.n64_client.write_bytestring(memory_location + DK64MemoryMap.fed_subtitle, f"From {stripped_player_name}")
+        self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.counter_offset, [next_index])
+        self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
+        self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"From {stripped_player_name}")
         if item_ids.get(item_id):
             if item_ids[item_id].get("flag_id", None) != None:
                 self.setFlag(item_ids[item_id].get("flag_id"))
@@ -104,15 +105,14 @@ class DK64Client:
                 logger.warning(f"Item {item_name} has no flag or fed id")
 
     async def writeFedData(self, fed_item):
-        pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-        current_fed_item = self.n64_client.read_u32(pointer + DK64MemoryMap.arch_items)
+        current_fed_item = self.n64_client.read_u32(self.memory_pointer + DK64MemoryMap.arch_items)
         # If item is being processed, don't update
         while current_fed_item != 0:
-            current_fed_item = self.n64_client.read_u32(pointer + DK64MemoryMap.arch_items)
+            current_fed_item = self.n64_client.read_u32(self.memory_pointer + DK64MemoryMap.arch_items)
             await asyncio.sleep(0.1)
             if current_fed_item == 0:
                 break
-        self.n64_client.write_u8(pointer + 0x7, [fed_item])
+        self.n64_client.write_u8(self.memory_pointer + 0x7, [fed_item])
 
     def check_safe_gameplay(self):
         current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
@@ -120,8 +120,7 @@ class DK64Client:
         return current_gamemode in [6, 0xD] and next_gamemode in [6, 0xD]
 
     def safe_to_send(self):
-        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-        countdown_value = self.n64_client.read_u8(memory_location + DK64MemoryMap.safety_text_timer)
+        countdown_value = self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.safety_text_timer)
         return countdown_value == 0
 
     def _getShopStatus(self, p_type: int, p_value: int, p_kong: int) -> bool:
@@ -287,7 +286,12 @@ class DK64Client:
 
     def started_file(self):
         # Checks to see if the file has been started
-        return self.readFlag(0) == 1
+        if not self.seed_started:
+            status = self.readFlag(0) == 1
+            if status:
+                self.seed_started = True
+            return status
+        return True
 
     should_reset_auth = False
 
@@ -315,12 +319,10 @@ class DK64Client:
         logger.info("Game connection ready!")
 
     async def is_victory(self):
-        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-        return self.n64_client.read_u8(memory_location + DK64MemoryMap.end_credits) == 1
+        return self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.end_credits) == 1
 
     def get_current_deliver_count(self):
-        memory_location = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
-        return self.n64_client.read_u8(memory_location + DK64MemoryMap.counter_offset)
+        return self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.counter_offset)
 
     async def main_tick(self, item_get_cb, win_cb):
         await self.readChecks(item_get_cb)

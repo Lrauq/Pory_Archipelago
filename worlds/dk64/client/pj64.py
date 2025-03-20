@@ -135,205 +135,71 @@ class PJ64Client:
             N64Exception: If the connection is refused, reset, or aborted.
             OSError: If the socket is already connected.
         """
-
+        if self.connected_message:
+            return
         if self.socket is None:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.settimeout(0.1)
         try:
             self.socket.connect((self.address, self.port))
+            self.connected_message = True
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             self.socket = None
             raise N64Exception("Connection refused or reset")
         except OSError:
             # We're already connected, just move on
             pass
-
-    def rominfo(self):
-        """
-        Retrieves ROM information from the connected N64 emulator.
-
-        This method connects to the N64 emulator, sends a request for ROM information,
-        and returns the received data as a dictionary.
-
-        Returns:
-            dict: A dictionary containing the ROM information.
-
-        Raises:
-            N64Exception: If the connection is refused, reset, or aborted.
-        """
+    def _send_command(self, command):
+        """Sends a command to the emulator and retrieves the response."""
         try:
             self._connect()
-            self.socket.send("romInfo".encode())
-            data = self.socket.recv(1024).decode()
-            return json.loads(data)
+            self.socket.send(command.encode())
+            response = self.socket.recv(1024).decode()
+            if not response:
+                raise N64Exception("No data received from the server")
+            return response
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             raise N64Exception("Connection refused or reset")
+    def _read_memory(self, address, size):
+        """Reads an unsigned integer of the given size from memory."""
+        return int(self._send_command(f"read u{size * 8} {hex(address)} {size}"))
+    def rominfo(self):
+        """Retrieves ROM information from the emulator."""
+        return json.loads(self._send_command("romInfo"))
 
     def read_u8(self, address):
-        """
-        Reads an 8-bit unsigned integer from the specified memory address.
-
-        Args:
-            address (int): The memory address to read from.
-
-        Returns:
-            int: The 8-bit unsigned integer read from the specified address.
-
-        Raises:
-            N64Exception: If the connection is refused, reset, or aborted.
-        """
-        try:
-            self._connect()
-            address = hex(address)
-            self.socket.send(f"read u8 {address} 1".encode())
-            server_response = self.socket.recv(1024).decode()
-            if not server_response:
-                raise N64Exception("No data received from the server")
-            data = int(server_response)
-            return data
-        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
+        """Reads an 8-bit unsigned integer from memory."""
+        return self._read_memory(address, 1)
 
     def read_u16(self, address):
-        """
-        Reads a 16-bit unsigned integer from the specified memory address.
-
-        Args:
-            address (int): The memory address to read from.
-
-        Returns:
-            int: The 16-bit unsigned integer read from the specified address.
-
-        Raises:
-            N64Exception: If the connection is refused, reset, or aborted.
-        """
-        try:
-            self._connect()
-            address = hex(address)
-            self.socket.send(f"read u16 {address} 2".encode())
-            server_response = self.socket.recv(1024).decode()
-            if not server_response:
-                raise N64Exception("No data received from the server")
-            data = int(server_response)
-            return data
-        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
+        """Reads a 16-bit unsigned integer from memory."""
+        return self._read_memory(address, 2)
 
     def read_u32(self, address):
-        """
-        Reads a 32-bit unsigned integer from the specified memory address.
+        """Reads a 32-bit unsigned integer from memory."""
+        return self._read_memory(address, 4)
 
-        Args:
-            address (int): The memory address to read from.
-
-        Returns:
-            int: The 32-bit unsigned integer read from the specified address.
-
-        Raises:
-            N64Exception: If the connection is refused, reset, or aborted.
-        """
-        try:
-            self._connect()
-            address = hex(address)
-            self.socket.send(f"read u32 {address} 4".encode())
-            server_response = self.socket.recv(1024).decode()
-            if not server_response:
-                raise N64Exception("No data received from the server")
-            data = int(server_response)
-            return data
-        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
+    def _write_memory(self, command, address, data):
+        """Writes data to memory and returns the emulator response."""
+        return self._send_command(f"{command} {hex(address)} {data}")
 
     def write_u8(self, address, data):
-        """
-        Writes an 8-bit unsigned integer to a specified address in the N64 emulator's memory.
-
-        Args:
-            address (int): The memory address to write to.
-            data (int): The 8-bit unsigned integer data to write.
-
-        Returns:
-            str: The response from the emulator after the write operation.
-
-        Raises:
-            N64Exception: If the connection to the emulator is refused, reset, or aborted.
-        """
-        try:
-            self._connect()
-            address = hex(address)
-            self.socket.send(f"write u8 {address} {data}".encode())
-            data = self.socket.recv(1024).decode()
-            return data
-        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
-
-    def write_bytestring(self, address, data):
-        """
-        Writes a bytestring to a specified address on the connected N64 device.
-
-        Args:
-            address (int): The memory address to write the bytestring to.
-            data (str): The bytestring data to write.
-
-        Returns:
-            str: The response from the N64 device after writing the bytestring.
-
-        Raises:
-            N64Exception: If the connection is refused, reset, or aborted.
-        """
-        try:
-            self._connect()
-            address = hex(address)
-            data = str(data).upper()
-            self.socket.send(f"write bytestring {address} {data}\x00".encode())
-            data = self.socket.recv(1024).decode()
-            return data
-        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
+        """Writes an 8-bit unsigned integer to memory."""
+        return self._write_memory("write u8", address, data)
 
     def write_u32(self, address, data):
-        """
-        Writes a 32-bit unsigned integer to the specified address in the N64 emulator.
+        """Writes a 32-bit unsigned integer to memory."""
+        return self._write_memory("write u32", address, data)
 
-        Args:
-            address (int): The memory address to write to.
-            data (int): The 32-bit unsigned integer data to write.
-
-        Returns:
-            str: The response from the emulator after writing the data.
-
-        Raises:
-            N64Exception: If the connection to the emulator is refused, reset, or aborted.
-        """
-        try:
-            self._connect()
-            address = hex(address)
-            self.socket.send(f"write u32 {address} {data}".encode())
-            data = self.socket.recv(1024).decode()
-            return data
-        except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
+    def write_bytestring(self, address, data):
+        """Writes a bytestring to memory."""
+        return self._write_memory("write bytestring", address, str(data).upper() + "\x00")
 
     def validate_rom(self, name, memory_location=None):
-        """
-        Validates the ROM by comparing its good name with the provided name.
-
-        Args:
-            name (str): The name to validate against the ROM's good name.
-            memory_location (int): The memory location to read from to verify the ROM is Archipelago.
-
-        Returns:
-            bool: True if the ROM's good name matches the provided name, False otherwise.
-        """
+        """Validates the ROM by comparing its name and optional memory location."""
         rom_info = self.rominfo()
         if not rom_info:
             return False
-        if rom_info.get("goodName", None) == str(name).upper():
-            if memory_location:
-                memory_result = self.read_u32(memory_location)
-                if memory_result != 0:
-                    return True
-                return False
-            else:
-                return True
+        if rom_info.get("goodName", "").upper() == name.upper():
+            return memory_location is None or self.read_u32(memory_location) != 0
         return False
