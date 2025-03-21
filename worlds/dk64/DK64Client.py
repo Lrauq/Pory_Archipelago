@@ -467,6 +467,12 @@ class DK64Context(CommonContext):
                 await self.client.wait_for_pj64()
                 while self.client.auth is None:
                     await asyncio.sleep(5)
+                if self.auth and self.client.auth != self.auth:
+                    # It would be neat to reconnect here, but connection needs this loop to be running
+                    logger.info("Detected new ROM, disconnecting...")
+                    await self.disconnect()
+                    continue
+
                 await self.client.validate_client_connection()
 
                 if not self.client.recvd_checks:
