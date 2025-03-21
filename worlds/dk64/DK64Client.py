@@ -255,8 +255,10 @@ class DK64Client:
             cb(new_checks)
         return True
 
-
-
+    async def reset_auth(self):
+        self.auth = "Player 1"
+        # TODO: Write logic to pull username
+        # await self.get_username()
     def started_file(self):
         # Checks to see if the file has been started
         if not self.seed_started:
@@ -397,20 +399,15 @@ class DK64Context(CommonContext):
             # allow a successful reconnect
             self.client.should_reset_auth = True
             self.had_invalid_slot_data = False
+
         while self.client.auth == None:
             await asyncio.sleep(0.1)
 
-            # # Just return if we're closing
-            # if self.exit_event.is_set():
-            #     return
-            # Handler didn't set auth, ask user for slot name
-            player_id = "Player 1"
-            self.auth = player_id
-            self.client.auth = self.auth
-            # if self.client.auth is None:
-            #      await self.get_username()
-            #     break
-        # self.auth = self.client.auth
+            # Just return if we're closing
+            if self.exit_event.is_set():
+                return
+
+        self.auth = self.client.auth
         await self.send_connect()
 
     def on_package(self, cmd: str, args: dict):
@@ -465,7 +462,8 @@ class DK64Context(CommonContext):
                 # this isn't totally neccessary, but is extra safety against cross-ROM contamination
                 self.client.recvd_checks.clear()
                 await self.client.wait_for_pj64()
-                while self.client.auth is None:
+                await self.client.reset_auth()
+                while self.auth is None:
                     await asyncio.sleep(5)
                 if self.auth and self.client.auth != self.auth:
                     # It would be neat to reconnect here, but connection needs this loop to be running
