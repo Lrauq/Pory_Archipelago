@@ -292,7 +292,7 @@ class DK64Client:
         logger.info("Game connection ready!")
 
     async def is_victory(self):
-        return self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.end_credits) == 1
+        return self.readFlag(self.memory_pointer + DK64MemoryMap.end_credits) == 1
 
     def get_current_deliver_count(self):
         return self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.counter_offset)
@@ -309,7 +309,6 @@ class DK64Client:
             # Get the next item in recvd_checks
             item = self.recvd_checks[current_deliver_count]
             item_name = self.item_names.lookup_in_game(item.item)
-            print(item_name)
             player_name = self.players.get(item.player)
             await self.recved_item_from_ap(item.item, item_name, player_name, current_deliver_count)
         
@@ -466,6 +465,8 @@ class DK64Context(CommonContext):
                 # this isn't totally neccessary, but is extra safety against cross-ROM contamination
                 self.client.recvd_checks.clear()
                 await self.client.wait_for_pj64()
+                while self.client.auth is None:
+                    await asyncio.sleep(5)
                 await self.client.validate_client_connection()
 
                 if not self.client.recvd_checks:
