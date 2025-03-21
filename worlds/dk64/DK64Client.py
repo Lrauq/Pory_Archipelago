@@ -167,18 +167,28 @@ class DK64Client:
         if item_index > 0:
             offset = item_index - 1
         return ((value >> offset) & 1) != 0
-
+    _purchase_cache = {}
     def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None) -> bool:
-        # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3=bfi
+        # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3 = bfi
         # flag_index: as expected
         if check_type == "shop":
             if shop_index == 3:
                 header = 0x807FF6E8
             else:
                 header = 0x807FF400 + (shop_index * 0xF0) + (kong_index * 0x30) + (level_index * 6)
-            purchase_type = self.n64_client.read_u16(header + 0)
-            purchase_value = self.n64_client.read_u16(header + 2)
-            purchase_kong = self.n64_client.read_u8(header + 4)
+            
+            # Check if the purchase data is already cached
+            if (shop_index, kong_index, level_index) not in self._purchase_cache:
+                purchase_type = self.n64_client.read_u16(header + 0)
+                purchase_value = self.n64_client.read_u16(header + 2)
+                purchase_kong = self.n64_client.read_u8(header + 4)
+
+                # Cache the values
+                self._purchase_cache[(shop_index, kong_index, level_index)] = (purchase_type, purchase_value, purchase_kong)
+            else:
+                # Retrieve from cache
+                purchase_type, purchase_value, purchase_kong = self._purchase_cache[(shop_index, kong_index, level_index)]
+            
             return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
         else:
             if self.flag_lookup is None:
@@ -463,13 +473,13 @@ class DK64Context(CommonContext):
                 self.client.recvd_checks.clear()
                 await self.client.wait_for_pj64()
                 await self.client.reset_auth()
-                while self.auth is None:
-                    await asyncio.sleep(5)
-                if self.auth and self.client.auth != self.auth:
-                    # It would be neat to reconnect here, but connection needs this loop to be running
-                    logger.info("Detected new ROM, disconnecting...")
-                    await self.disconnect()
-                    continue
+                # while self.auth is None:
+                #     await asyncio.sleep(5)
+                # if self.auth and self.client.auth != self.auth:
+                #     # It would be neat to reconnect here, but connection needs this loop to be running
+                #     logger.info("Detected new ROM, disconnecting...")
+                #     await self.disconnect()
+                #     continue
 
                 await self.client.validate_client_connection()
 
@@ -487,7 +497,7 @@ class DK64Context(CommonContext):
                     await self.client.main_tick(on_item_get, victory)
                     await asyncio.sleep(1)
                     now = time.time()
-                    if self.last_resend + 5.0 < now:
+                    if self.last_resend + 0.5 < now:
                         self.last_resend = now
                         await self.send_checks()
                     if self.client.should_reset_auth:

@@ -9,11 +9,11 @@ from Utils import open_filename
 from Utils import get_settings
 
 
-class N64Exception(Exception):
+class PJ64Exception(Exception):
     """
-    Custom exception class for N64-related errors.
+    Custom exception class for PJ64-related errors.
 
-    This exception is raised when an error specific to N64 operations occurs.
+    This exception is raised when an error specific to PJ64 operations occurs.
 
     Attributes:
         message (str): Explanation of the error.
@@ -46,14 +46,14 @@ class PJ64Client:
         """Ensures the Project 64 executable and the required adapter script are properly set up.
 
         Raises:
-            N64Exception: If the Project 64 executable is not found or if the `ap_adapter.js` file is in use.
+            PJ64Exception: If the Project 64 executable is not found or if the `ap_adapter.js` file is in use.
         """
         options = get_settings()
         executable = options.get("project64_options", {}).get("executable")
         if not executable:
             executable = open_filename("Project 64 4.0 Executable", (("Project64 Executable", (".exe",)),), "Project64.exe")
             if not executable:
-                raise N64Exception("Project 64 executable not found.")
+                raise PJ64Exception("Project 64 executable not found.")
             options.update({"project64_options": {"executable": executable}})
             options.save()
 
@@ -77,7 +77,7 @@ class PJ64Client:
                 with open(adapter_path, "w") as f:
                     f.write(adapter_content)
             except PermissionError:
-                raise N64Exception("Unable to add adapter file to Project64, you may need to run this script as an administrator or close Project64.")
+                raise PJ64Exception("Unable to add adapter file to Project64, you may need to run this script as an administrator or close Project64.")
         self._verify_pj64_config(os.path.join(os.path.dirname(executable), "Config", "Project64.cfg"))
         # Check if project 64 is running
         if not self._is_exe_running(os.path.basename(executable)):
@@ -132,7 +132,7 @@ class PJ64Client:
         If the socket is not already created, it initializes a new socket with
         AF_INET and SOCK_STREAM parameters and sets a timeout of 0.1 seconds.
         Raises:
-            N64Exception: If the connection is refused, reset, or aborted.
+            PJ64Exception: If the connection is refused, reset, or aborted.
             OSError: If the socket is already connected.
         """
         if self.connected_message:
@@ -145,10 +145,11 @@ class PJ64Client:
             self.connected_message = True
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
             self.socket = None
-            raise N64Exception("Connection refused or reset")
+            raise PJ64Exception("Connection refused or reset")
         except OSError:
             # We're already connected, just move on
             pass
+
     def _send_command(self, command):
         """Sends a command to the emulator and retrieves the response."""
         try:
@@ -156,13 +157,15 @@ class PJ64Client:
             self.socket.send(command.encode())
             response = self.socket.recv(1024).decode()
             if not response:
-                raise N64Exception("No data received from the server")
+                raise PJ64Exception("No data received from the server")
             return response
         except (ConnectionRefusedError, ConnectionResetError, ConnectionAbortedError):
-            raise N64Exception("Connection refused or reset")
+            raise PJ64Exception("Connection refused or reset")
+
     def _read_memory(self, address, size):
         """Reads an unsigned integer of the given size from memory."""
         return int(self._send_command(f"read u{size * 8} {hex(address)} {size}"))
+
     def rominfo(self):
         """Retrieves ROM information from the emulator."""
         return json.loads(self._send_command("romInfo"))
@@ -178,6 +181,12 @@ class PJ64Client:
     def read_u32(self, address):
         """Reads a 32-bit unsigned integer from memory."""
         return self._read_memory(address, 4)
+
+    def read_u8_block(self, address, size):
+        """Reads an unsigned integer of the given size from memory."""
+        resp = self._send_command(f"read u8 {hex(address)} {size}")
+        # Split by commas and convert to integers
+        return [x for x in resp.split(",")]
 
     def _write_memory(self, command, address, data):
         """Writes data to memory and returns the emulator response."""
