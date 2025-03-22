@@ -50,7 +50,57 @@ function startServer() {
                     c.write("Usage: read u8/u16/u32 0xADDRESS SIZE");
                 }
             }
-
+            else if (message.startsWith("dict")) {
+                // Remove "dict " from the beginning
+                var dict = message.substring(5);
+                try {
+                    dict = JSON.parse(dict);
+                } catch (e) {
+                    console.log(e)
+                    c.write("Invalid JSON format for dictionary");
+                    return;
+                }
+                // eg dict {"name": {"type": "u8", "adr": 0x1234, "size": 4}}
+                var result = {};
+                for (var key in dict) {
+                    var item = dict[key];
+                    // If the item is not a dict, assume we just got the address and convert it to a dict
+                    if (typeof item !== "object") {
+                        item = {"adr": item};
+                    }
+                    // If type is not defined default to u8
+                    if (!item.type) {
+                        item.type = "u8";
+                    }
+                    if (!item.size) {
+                        item.size = 1;
+                    }
+                    if (item.type === "u8") {
+                        var values = [];
+                        for (var i = 0; i < item.size; i++) {
+                            values.push(mem.u8[item.adr + i]);
+                        }
+                        result[key] = values;
+                    } else if (item.type === "u16") {
+                        var values = [];
+                        for (var i = 0; i < item.size; i += 2) {
+                            values.push(mem.u16[item.adr + i]);
+                        }
+                        result[key] = values;
+                    } else if (item.type === "u32") {
+                        var values = [];
+                        for (var i = 0; i < item.size; i += 4) {
+                            values.push(mem.u32[item.adr + i]);
+                        }
+                        result[key] = values;
+                    } else {
+                        c.write("Invalid type, use: u8, u16, u32");
+                        return;
+                    }
+                }
+                c.write(JSON.stringify(result));
+                return;
+            }
             else if (message.startsWith("write")) {
                 var parts = message.split(" ");
                 var type = parts[1];

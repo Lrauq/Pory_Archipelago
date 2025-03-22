@@ -154,8 +154,8 @@ class PJ64Client:
         """Sends a command to the emulator and retrieves the response."""
         try:
             self._connect()
-            self.socket.send(command.encode())
-            response = self.socket.recv(1024).decode()
+            self.socket.sendall(command.encode())
+            response = self.socket.recv(4096).decode()
             if not response:
                 raise PJ64Exception("No data received from the server")
             return response
@@ -182,12 +182,9 @@ class PJ64Client:
         """Reads a 32-bit unsigned integer from memory."""
         return self._read_memory(address, 4)
 
-    def read_u8_block(self, address, size):
-        """Reads an unsigned integer of the given size from memory."""
-        resp = self._send_command(f"read u8 {hex(address)} {size}")
-        # Split by commas and convert to integers
-        return [x for x in resp.split(",")]
-
+    def read_dict(self, dict):
+        """Reads a dictionary of memory addresses and returns the values."""
+        return self._send_command(f"dict {json.dumps(dict, separators=(',', ':'))}")
     def _write_memory(self, command, address, data):
         """Writes data to memory and returns the emulator response."""
         return self._send_command(f"{command} {hex(address)} [{data}]")
