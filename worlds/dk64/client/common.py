@@ -22,7 +22,6 @@ class DK64MemoryMap:
     NextGamemode = 0x80755318
     safety_text_timer = 0x02A
     end_credits = 0x1B0
-    player_name = 0x1FF3000
 
 
 all_tasks = set()

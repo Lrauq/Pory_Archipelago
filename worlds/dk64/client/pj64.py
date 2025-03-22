@@ -186,6 +186,10 @@ class PJ64Client:
         """Reads a dictionary of memory addresses and returns the values."""
         return self._send_command(f"dict {json.dumps(dict, separators=(',', ':'))}")
 
+    def read_bytestring(self, address, length):
+        """Reads a bytestring from memory."""
+        return self._send_command(f"read bytestring {hex(address)} {length}")
+
     def _write_memory(self, command, address, data):
         """Writes data to memory and returns the emulator response."""
         return self._send_command(f"{command} {hex(address)} {data}")

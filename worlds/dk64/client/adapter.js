@@ -24,8 +24,14 @@ function startServer() {
                     var size = parseInt(parts[3], 10);
                     if (!isNaN(address) && !isNaN(size) && size > 0) {
                         var result = [];
-
-                        if (type === "u8") {
+                        if (type === "bytestring") {
+                            for (var i = 0; i < size; i++) {
+                                result.push(String.fromCharCode(mem.u8[address + i]));
+                            }
+                            c.write(result.join(""));
+                            return;
+                        }
+                        else if (type === "u8") {
                             for (var i = 0; i < size; i++) {
                                 result.push(mem.u8[address + i]);
                             }

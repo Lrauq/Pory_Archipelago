@@ -302,8 +302,11 @@ class DK64Client:
         return True
 
     async def reset_auth(self):
-        self.auth = "Player 1"
-        # TODO: Write logic to pull username
+        username = self.n64_client.read_bytestring(0x1FF3000 + 0xB0000000, 16).strip()
+        # Strip all trailing \x00
+        username = username.replace("\x00", "")
+        self.auth = username
+        # TODO: Maybe in some random case we try to get the username manually, but thats a problem for later
         # await self.get_username()
 
     def started_file(self):
@@ -341,7 +344,7 @@ class DK64Client:
         logger.info("Game connection ready!")
 
     async def is_victory(self):
-        return self.readFlag(self.memory_pointer + DK64MemoryMap.end_credits) == 1
+        return self.readFlag(DK64MemoryMap.end_credits) == 1
 
     def get_current_deliver_count(self):
         return self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.counter_offset)
@@ -509,13 +512,13 @@ class DK64Context(CommonContext):
                 self.client.recvd_checks.clear()
                 await self.client.wait_for_pj64()
                 await self.client.reset_auth()
-                # while self.auth is None:
-                #     await asyncio.sleep(5)
-                # if self.auth and self.client.auth != self.auth:
-                #     # It would be neat to reconnect here, but connection needs this loop to be running
-                #     logger.info("Detected new ROM, disconnecting...")
-                #     await self.disconnect()
-                #     continue
+                while self.auth is None:
+                    await asyncio.sleep(5)
+                if self.auth and self.client.auth != self.auth:
+                    # It would be neat to reconnect here, but connection needs this loop to be running
+                    logger.info("Detected new ROM, disconnecting...")
+                    await self.disconnect()
+                    continue
 
                 await self.client.validate_client_connection()
 

@@ -148,6 +148,7 @@ if baseclasses_loaded:
                 spoiler = self.logic_holder.spoiler
                 spoiler.settings.archipelago = True
                 spoiler.settings.random = self.random
+                spoiler.settings.player_name = self.multiworld.get_player_name(self.player)
                 spoiler.pregiven_items = []
                 # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
                 for ap_location in self.multiworld.get_locations(self.player):
