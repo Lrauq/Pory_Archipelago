@@ -66,13 +66,27 @@ class DK64Client:
                 await asyncio.sleep(1.0)
                 pass
 
+    def check_safe_gameplay(self):
+        current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
+        next_gamemode = self.n64_client.read_u8(DK64MemoryMap.NextGamemode)
+        return current_gamemode in [6, 0xD] and next_gamemode in [6, 0xD]
+
+    def safe_to_send(self):
+        countdown_value = self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.safety_text_timer)
+        return countdown_value == 0
+
     async def validate_client_connection(self):
         if not self.memory_pointer:
             self.memory_pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
         self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, 0xFF)
 
-    async def wait_and_init_tracker(self):
-        await self.wait_for_game_ready()
+
+
+    def send_message(self, item_name, player_name, event_type="from"):
+        stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
+        stripped_player_name = "".join(e for e in player_name if str(e).isalnum() or str(e) == " ")
+        self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
+        self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"{event_type} {stripped_player_name}")
 
     async def recved_item_from_ap(self, item_id, item_name, from_player, next_index):
         # Don't allow getting an item until you've got your first check
@@ -88,12 +102,8 @@ class DK64Client:
             await asyncio.sleep(0.1)
             status = self.safe_to_send()
         next_index += 1
-        # Strip out special characters from item name
-        stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
-        stripped_player_name = "".join(e for e in from_player if str(e).isalnum() or str(e) == " ")
         self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.counter_offset, next_index)
-        self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
-        self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"From {stripped_player_name}")
+        self.send_message(item_name, from_player, "from")
         if item_ids.get(item_id):
             if item_ids[item_id].get("flag_id", None) != None:
                 self.setFlag(item_ids[item_id].get("flag_id"))
@@ -111,15 +121,6 @@ class DK64Client:
             if current_fed_item == 0:
                 break
         self.n64_client.write_u8(self.memory_pointer + 0x7, fed_item)
-
-    def check_safe_gameplay(self):
-        current_gamemode = self.n64_client.read_u8(DK64MemoryMap.CurrentGamemode)
-        next_gamemode = self.n64_client.read_u8(DK64MemoryMap.NextGamemode)
-        return current_gamemode in [6, 0xD] and next_gamemode in [6, 0xD]
-
-    def safe_to_send(self):
-        countdown_value = self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.safety_text_timer)
-        return countdown_value == 0
 
     def _getShopStatus(self, p_type: int, p_value: int, p_kong: int) -> bool:
         if p_type == 0xFFFF:
@@ -370,10 +371,7 @@ class DK64Client:
                 # Strip out special characters from item name
                 item_name = item[0]
                 sender = item[1]
-                stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
-                stripped_player_name = "".join(e for e in sender if str(e).isalnum() or str(e) == " ")
-                self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
-                self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"To {stripped_player_name}")
+                self.send_message(item_name, sender, "to")
                 self.sent_checks.remove(item)
 
 
@@ -524,7 +522,6 @@ class DK64Context(CommonContext):
                 if not self.client.recvd_checks:
                     await self.sync()
 
-                # await self.client.wait_and_init_tracker()
                 await asyncio.sleep(1.0)
                 while True:
                     await self.client.validate_client_connection()
