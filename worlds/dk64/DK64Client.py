@@ -167,13 +167,22 @@ class DK64Client:
         # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3 = bfi
         # flag_index: as expected
         if check_type == "shop":
-            if shop_index == 3:
-                header = 0x807FF6E8
+            cache_key = (shop_index, kong_index, level_index)
+            if cache_key in self._purchase_cache:
+                # Retrieve cached values
+                purchase_type, purchase_value, purchase_kong = self._purchase_cache[cache_key]
             else:
-                header = 0x807FF400 + (shop_index * 0xF0) + (kong_index * 0x30) + (level_index * 6)
-            purchase_type = self.n64_client.read_u16(header + 0)
-            purchase_value = self.n64_client.read_u16(header + 2)
-            purchase_kong = self.n64_client.read_u8(header + 4)
+                # Calculate header and read values
+                if shop_index == 3:
+                    header = 0x807FF6E8
+                else:
+                    header = 0x807FF400 + (shop_index * 0xF0) + (kong_index * 0x30) + (level_index * 6)
+                purchase_type = self.n64_client.read_u16(header + 0)
+                purchase_value = self.n64_client.read_u16(header + 2)
+                purchase_kong = self.n64_client.read_u8(header + 4)
+                # Cache the values
+                self._purchase_cache[cache_key] = (purchase_type, purchase_value, purchase_kong)
+
             return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
         else:
             if self.flag_lookup is None:
@@ -232,7 +241,7 @@ class DK64Client:
             shift = int(key) & 7
             flag_status = (int(val[0]) >> shift) & 1
             _bulk_read_dict[int(key)] = flag_status
-        for id in self.remaining_checks:
+        for id in self.remaining_checks[:]:
             name = check_id_to_name.get(id)
             # Try to get the check via location_name_to_flag
             check = location_name_to_flag.get(name)
@@ -268,47 +277,21 @@ class DK64Client:
                             new_checks.append(id)
                         continue
                     elif len(content) == 3:
-                        level_index = None
-                        shop_index = None
-                        kong_index = None
-                        if content[0] == "Japes":
-                            level_index = 0
-                        elif content[0] == "Aztec":
-                            level_index = 1
-                        elif content[0] == "Factory":
-                            level_index = 2
-                        elif content[0] == "Galleon":
-                            level_index = 3
-                        elif content[0] == "Forest":
-                            level_index = 4
-                        elif content[0] == "Caves":
-                            level_index = 5
-                        elif content[0] == "Castle":
-                            level_index = 6
-                        elif content[0] == "Isles":
-                            level_index = 7
-                        if content[1] == "Cranky":
-                            shop_index = 0
-                        elif content[1] == "Funky":
-                            shop_index = 1
-                        elif content[1] == "Candy":
-                            shop_index = 2
-                        if content[2] == "Donkey":
-                            kong_index = 0
-                        elif content[2] == "Diddy":
-                            kong_index = 1
-                        elif content[2] == "Lanky":
-                            kong_index = 2
-                        elif content[2] == "Tiny":
-                            kong_index = 3
-                        elif content[2] == "Chunky":
-                            kong_index = 4
+                        level_mapping = {"Japes": 0, "Aztec": 1, "Factory": 2, "Galleon": 3, "Forest": 4, "Caves": 5, "Castle": 6, "Isles": 7}
+                        shop_mapping = {"Cranky": 0, "Funky": 1, "Candy": 2}
+                        kong_mapping = {"Donkey": 0, "Diddy": 1, "Lanky": 2, "Tiny": 3, "Chunky": 4}
+
+                        level_index = level_mapping.get(content[0])
+                        shop_index = shop_mapping.get(content[1])
+                        kong_index = kong_mapping.get(content[2])
+
                         # If any of these are not set, continue
                         if level_index is None or shop_index is None or kong_index is None:
                             continue
+
                         check_status = self.getCheckStatus("shop", None, shop_index, level_index, kong_index)
                         if check_status:
-                            # logger.info(f"Found {name} via shop")
+                            print(f"Found {name} via shop check")
                             self.remaining_checks.remove(id)
                             new_checks.append(id)
                         continue
