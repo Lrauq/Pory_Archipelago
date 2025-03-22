@@ -35,6 +35,7 @@ class DK64Client:
     sent_checks = []
     item_names = None
     memory_pointer = None
+    _purchase_cache = {}
 
     async def wait_for_pj64(self):
         clear_waiting_message = True
@@ -83,11 +84,6 @@ class DK64Client:
         # beat the game
         # the client handles the last pending item
         status = self.safe_to_send()
-        # while not (await self.is_victory()) and not status:
-        #     time.sleep(0.1)
-        #     print("CHECKING SAFE TO SEND")
-        #     print(status)
-        #     status = self.safe_to_send()
         while not status:
             await asyncio.sleep(0.1)
             status = self.safe_to_send()
@@ -124,6 +120,7 @@ class DK64Client:
     def safe_to_send(self):
         countdown_value = self.n64_client.read_u8(self.memory_pointer + DK64MemoryMap.safety_text_timer)
         return countdown_value == 0
+
     def _getShopStatus(self, p_type: int, p_value: int, p_kong: int) -> bool:
         if p_type == 0xFFFF:
             return False
@@ -166,8 +163,8 @@ class DK64Client:
         if item_index > 0:
             offset = item_index - 1
         return ((value >> offset) & 1) != 0
-    _purchase_cache = {}
-    def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None) -> bool:
+
+    def getCheckStatus(self, check_type, flag_index=None, shop_index=None, level_index=None, kong_index=None, _bulk_read_dict={}) -> bool:
         # shop_index: 0 = cranky, 1 = funky, 2 = candy, 3 = bfi
         # flag_index: as expected
         if check_type == "shop":
@@ -175,7 +172,7 @@ class DK64Client:
                 header = 0x807FF6E8
             else:
                 header = 0x807FF400 + (shop_index * 0xF0) + (kong_index * 0x30) + (level_index * 6)
-            
+
             # Check if the purchase data is already cached
             if (shop_index, kong_index, level_index) not in self._purchase_cache:
                 purchase_type = self.n64_client.read_u16(header + 0)
@@ -187,7 +184,7 @@ class DK64Client:
             else:
                 # Retrieve from cache
                 purchase_type, purchase_value, purchase_kong = self._purchase_cache[(shop_index, kong_index, level_index)]
-            
+
             return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
         else:
             if self.flag_lookup is None:
@@ -202,31 +199,34 @@ class DK64Client:
                     has_camera = self.readFlag(0x2FD) != 0
                     has_shockwave = self.readFlag(0x179) != 0
                     return has_camera and has_shockwave
-                return self.bulk_read_dict.get(target_flag) != 0
+                return _bulk_read_dict.get(target_flag) != 0
             else:
-                return self.bulk_read_dict.get(flag_index) != 0
-    
-    def bulk_lookup(self, flag_index):
+                return _bulk_read_dict.get(flag_index) != 0
+
+    def bulk_lookup(self, flag_index, _bulk_read_dict):
         if flag_index in self.flag_lookup:
             target_flag = self.flag_lookup[flag_index]
-            self.BulkreadFlag(target_flag)
+            byte_index = target_flag >> 3
+            offset = DK64MemoryMap.EEPROM + byte_index
+            _bulk_read_dict[target_flag] = offset
         else:
-            self.BulkreadFlag(flag_index)
+            byte_index = flag_index >> 3
+            offset = DK64MemoryMap.EEPROM + byte_index
+            _bulk_read_dict[flag_index] = offset
+
     async def readChecks(self, cb):
         """Run checks in parallel using asyncio with optimized processing."""
         new_checks = []
         remove_checks = set()  # Collect items to remove after iteration
 
-        level_map = {
-            "Japes": 0, "Aztec": 1, "Factory": 2, "Galleon": 3,
-            "Forest": 4, "Caves": 5, "Castle": 6, "Isles": 7
-        }
+        level_map = {"Japes": 0, "Aztec": 1, "Factory": 2, "Galleon": 3, "Forest": 4, "Caves": 5, "Castle": 6, "Isles": 7}
         shop_map = {"Cranky": 0, "Funky": 1, "Candy": 2}
         kong_map = {"Donkey": 0, "Diddy": 1, "Lanky": 2, "Tiny": 3, "Chunky": 4}
-        self.bulk_read_dict = {}
+        if self.flag_lookup is None:
+            self._build_flag_lookup()
+        _bulk_read_dict = {}
         for id in self.remaining_checks[:]:  # Iterate over a copy to avoid modification issues
-            if self.flag_lookup is None:
-                self._build_flag_lookup()
+
             name = check_id_to_name.get(id)
             if not name:
                 continue
@@ -234,24 +234,24 @@ class DK64Client:
             # Check location_name_to_flag first
             check = location_name_to_flag.get(name)
             if check:
-                self.bulk_lookup(check)
+                self.bulk_lookup(check, _bulk_read_dict)
 
             # Check item_ids for flag_id
             check = item_ids.get(id)
             if check:
                 flag_id = check.get("flag_id")
                 if flag_id:
-                    self.bulk_lookup(flag_id)
-        def byte_shift(index, val):
-            shift = index & 7
-            return (val >> shift) & 1
-        dict_data = self.n64_client.read_dict(self.bulk_read_dict)
+                    self.bulk_lookup(flag_id, _bulk_read_dict)
+
+
+        dict_data = self.n64_client.read_dict(_bulk_read_dict)
         # Json loads the dict_data
         dict_data = json.loads(dict_data)
-        self.bulk_read_dict = {}
         # For each item in the dict, the key is the index the value is the val for byte_shift. Keep the key the same but set the value to the result of byte_shift
         for key, val in dict_data.items():
-            self.bulk_read_dict[int(key)] = byte_shift(int(key), int(val[0]))
+            shift = int(key) & 7
+            flag_status = (int(val[0]) >> shift) & 1
+            _bulk_read_dict[int(key)] = flag_status
         for id in self.remaining_checks[:]:  # Iterate over a copy to avoid modification issues
             name = check_id_to_name.get(id)
             if not name:
@@ -259,7 +259,7 @@ class DK64Client:
 
             # Check location_name_to_flag first
             check = location_name_to_flag.get(name)
-            if check and self.getCheckStatus("location", check):
+            if check and self.getCheckStatus("location", check, _bulk_read_dict=_bulk_read_dict):
                 print(name)
                 new_checks.append(id)
                 remove_checks.add(id)
@@ -269,7 +269,7 @@ class DK64Client:
             check = item_ids.get(id)
             if check:
                 flag_id = check.get("flag_id")
-                if flag_id and self.getCheckStatus("location", flag_id):
+                if flag_id and self.getCheckStatus("location", flag_id, _bulk_read_dict=_bulk_read_dict):
                     print(name)
                     new_checks.append(id)
                     remove_checks.add(id)
@@ -304,6 +304,7 @@ class DK64Client:
         self.auth = "Player 1"
         # TODO: Write logic to pull username
         # await self.get_username()
+
     def started_file(self):
         # Checks to see if the file has been started
         if not self.seed_started:
@@ -329,11 +330,6 @@ class DK64Client:
         offset = DK64MemoryMap.EEPROM + byte_index
         val = self.n64_client.read_u8(offset)
         return (val >> shift) & 1
-    bulk_read_dict = {}
-    def BulkreadFlag(self, index: int) -> int:
-        byte_index = index >> 3
-        offset = DK64MemoryMap.EEPROM + byte_index
-        self.bulk_read_dict[index] = offset
 
     async def wait_for_game_ready(self):
         logger.info("Waiting on game to be in valid state...")
@@ -363,7 +359,7 @@ class DK64Client:
             item_name = self.item_names.lookup_in_game(item.item)
             player_name = self.players.get(item.player)
             await self.recved_item_from_ap(item.item, item_name, player_name, current_deliver_count)
-        
+
         if len(self.sent_checks) > 0:
             cloned_checks = self.sent_checks.copy()
             for item in cloned_checks:
@@ -379,6 +375,7 @@ class DK64Client:
                 self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
                 self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"To {stripped_player_name}")
                 self.sent_checks.remove(item)
+
 
 class DK64Context(CommonContext):
     tags = {"AP"}
@@ -479,6 +476,7 @@ class DK64Context(CommonContext):
                 if sender:
                     player_name = self.player_names.get(player)
                     self.client.sent_checks.append((item_name, player_name))
+
     async def sync(self):
         sync_msg = [{"cmd": "Sync"}]
         await self.send_msgs(sync_msg)
