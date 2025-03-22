@@ -86,8 +86,8 @@ class PJ64Client:
 
     def _is_exe_running(self, exe_name):
         """Check if a given executable is running."""
-        for process in psutil.process_iter(['name']):
-            if process.info['name'] and process.info['name'].lower() == exe_name.lower():
+        for process in psutil.process_iter(["name"]):
+            if process.info["name"] and process.info["name"].lower() == exe_name.lower():
                 return True
         return False
 
@@ -185,6 +185,7 @@ class PJ64Client:
     def read_dict(self, dict):
         """Reads a dictionary of memory addresses and returns the values."""
         return self._send_command(f"dict {json.dumps(dict, separators=(',', ':'))}")
+
     def _write_memory(self, command, address, data):
         """Writes data to memory and returns the emulator response."""
         return self._send_command(f"{command} {hex(address)} [{data}]")

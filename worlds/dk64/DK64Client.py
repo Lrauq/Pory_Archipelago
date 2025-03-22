@@ -80,8 +80,6 @@ class DK64Client:
             self.memory_pointer = self.n64_client.read_u32(DK64MemoryMap.memory_pointer)
         self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, 0xFF)
 
-
-
     def send_message(self, item_name, player_name, event_type="from"):
         stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
         stripped_player_name = "".join(e for e in player_name if str(e).isalnum() or str(e) == " ")
@@ -243,7 +241,6 @@ class DK64Client:
                 flag_id = check.get("flag_id")
                 if flag_id:
                     self.bulk_lookup(flag_id, _bulk_read_dict)
-
 
         dict_data = self.n64_client.read_dict(_bulk_read_dict)
         # Json loads the dict_data
