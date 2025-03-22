@@ -93,6 +93,7 @@ def setup_items(world: World) -> typing.List[DK64Item]:
         if seed_item == DK64RItems.HideoutHelmKey and world.logic_holder.settings.key_8_helm:
             world.multiworld.get_location("The End of Helm", world.player).place_locked_item(DK64Item("HideoutHelmKey", ItemClassification.progression, full_item_table[item.name].code, world.player))
             world.logic_holder.location_pool_size -= 1
+            continue
         item_table.append(DK64Item(seed_item.name, classification, full_item_table[item.name].code, world.player))
         # print("Adding item: " + seed_item.name + " | " + str(classification))
 

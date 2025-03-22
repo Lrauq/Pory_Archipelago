@@ -10,7 +10,8 @@ from DK64R.randomizer.Enums.Kongs import Kongs
 from DK64R.randomizer.Enums.Levels import Levels
 from DK64R.randomizer.Enums.Locations import Locations
 from DK64R.randomizer.Enums.Regions import Regions
-from DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting, FasterChecksSelected
+from DK64R.randomizer.Enums.Settings import HelmSetting, FungiTimeSetting, FasterChecksSelected, ShuffleLoadingZones
+from DK64R.randomizer.Enums.Transitions import Transitions
 from DK64R.randomizer.Enums.Types import Types
 from DK64R.randomizer.Lists import Location as DK64RLocation, Item as DK64RItem
 from DK64R.randomizer.LogicClasses import Collectible, Event, LocationLogic, TransitionFront, Region as DK64Region
@@ -298,9 +299,52 @@ def connect_regions(world: World, logic_holder: LogicVarHolder):
     #     "Test",
     #     lambda state: state.has(DK64RItem.ItemList[DK64RItems.GoldenBanana].name, world.player, 2),
     # )
+    
+    # Shuffling level order should be going off of our ShufflableExits dictionary, but that's not properly isolated to the spoiler object yet.
+    # For now, we have to pre-calculate what the destination region is for each of these transitions.
+    if logic_holder.settings.shuffle_loading_zones == ShuffleLoadingZones.levels:
+        lobby_transition_mapping = {}
+        enter_lobby_transitions = {
+            Transitions.IslesMainToJapesLobby: None,
+            Transitions.IslesMainToAztecLobby: None,
+            Transitions.IslesMainToFactoryLobby: None,
+            Transitions.IslesMainToGalleonLobby: None,
+            Transitions.IslesMainToForestLobby: None,
+            Transitions.IslesMainToCavesLobby: None,
+            Transitions.IslesMainToCastleLobby: None,
+            Transitions.IslesMainToHelmLobby: None
+        }
+        exit_lobby_transitions = {
+            Transitions.IslesJapesLobbyToMain: None,
+            Transitions.IslesAztecLobbyToMain: None,
+            Transitions.IslesFactoryLobbyToMain: None,
+            Transitions.IslesGalleonLobbyToMain: None,
+            Transitions.IslesForestLobbyToMain: None,
+            Transitions.IslesCavesLobbyToMain: None,
+            Transitions.IslesCastleLobbyToMain: None,
+            Transitions.IslesHelmLobbyToMain: None
+        }
+        # Identify which regions each lobby transition leads to in vanilla - this is as un-hard-coded as I can make it
+        for region_id, region_obj in DKIsles.LogicRegions.items():
+            for exit in region_obj.exits:
+                if exit.exitShuffleId in enter_lobby_transitions and not exit.isGlitchTransition:
+                    enter_lobby_transitions[exit.exitShuffleId] = exit.dest.name
+                if exit.exitShuffleId in exit_lobby_transitions and not exit.isGlitchTransition:
+                    exit_lobby_transitions[exit.exitShuffleId] = exit.dest.name
+        # Now we can map the transitions to the shuffled level order
+        enter_lobby_transitions_list = list(enter_lobby_transitions.keys())
+        exit_lobby_transitions_list = list(exit_lobby_transitions.keys())
+        for i in range(len(logic_holder.settings.level_order)):
+            level = logic_holder.settings.level_order[i+1]
+            lobby_transition_mapping[enter_lobby_transitions_list[i]] = enter_lobby_transitions[enter_lobby_transitions_list[level]]
+            lobby_transition_mapping[exit_lobby_transitions_list[level]] = exit_lobby_transitions[exit_lobby_transitions_list[i]]
 
     for region_id, region_obj in all_logic_regions.items():
         for exit in region_obj.exits:
+            destination_name = exit.dest.name
+            # If this is a Isles <-> Lobby transition and we're shuffling levels, respect the dictionary built earlier
+            if logic_holder.settings.shuffle_loading_zones == ShuffleLoadingZones.levels and exit.exitShuffleId in lobby_transition_mapping.keys():
+                destination_name = lobby_transition_mapping[exit.exitShuffleId]
             try:
                 # Quickly test and see if we can pass this exit with zero items
                 quick_success = False
@@ -313,7 +357,8 @@ def connect_regions(world: World, logic_holder: LogicVarHolder):
                     converted_logic = lambda state: True
                 else:
                     converted_logic = lambda state, exit=exit: hasDK64RTransition(state, logic_holder, exit)
-                connect(world, region_id.name, exit.dest.name, converted_logic)
+                connect(world, region_id.name, destination_name, converted_logic)
+                # print("Connecting " + region_id.name + " to " + destination_name)
             except Exception:
                 pass
     pass

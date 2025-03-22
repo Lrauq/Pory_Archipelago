@@ -37,7 +37,7 @@ if baseclasses_loaded:
     from DK64R.randomizer.Patching.ApplyRandomizer import patching_response
     from DK64R import version
     from DK64R.randomizer.Patching.EnemyRando import randomize_enemies_0
-    from DK64R.randomizer.Fill import ShuffleItems, ItemReference
+    from DK64R.randomizer.Fill import ShuffleItems, ItemReference, IdentifyMajorItems
     from DK64R.randomizer.CompileHints import compileMicrohints
     from DK64R.randomizer.Enums.Types import Types
     from DK64R.randomizer.Enums.Locations import Locations
@@ -89,9 +89,10 @@ if baseclasses_loaded:
         def __init__(self, multiworld: MultiWorld, player: int):
             self.rom_name_available_event = threading.Event()
             super().__init__(multiworld, player)
-            self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKC4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
+            # V1 LIMITATION: We are restricting settings pretty heavily. This string serves as the base for all seeds, with AP options overriding some options
+            self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKi4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
             settings_dict = decrypt_settings_string_enum(self.settings_string)
-            settings = Settings(settings_dict, multiworld.random)
+            settings = Settings(settings_dict, self.random)
             spoiler = Spoiler(settings)
             spoiler.settings.shuffled_location_types.append(Types.ArchipelagoItem)
             self.logic_holder = LogicVarHolder(spoiler, self)
@@ -115,6 +116,10 @@ if baseclasses_loaded:
             spoiler.pkmn_snap_data = []
             if spoiler.settings.enemy_rando:
                 randomize_enemies_0(spoiler)
+            # Handle Loading Zones - this will handle LO and (someday?) LZR appropriately
+            if spoiler.settings.shuffle_loading_zones != ShuffleLoadingZones.none:
+                ShuffleExits.ExitShuffle(spoiler, skip_verification=True)
+                spoiler.UpdateExits() 
 
         def create_regions(self) -> None:
             create_regions(self.multiworld, self.player, self.logic_holder)
@@ -183,10 +188,6 @@ if baseclasses_loaded:
                         spoiler.LocationList[dk64_location_id].PlaceItem(spoiler, DK64RItems.NoItem)
                     else:
                         print(f"Location {ap_location.name} not found in DK64 location table.")
-                # Handle Loading Zones - this will handle LO and LZR appropriately
-                # if spoiler.settings.shuffle_loading_zones != ShuffleLoadingZones.none:
-                #     ShuffleExits.ExitShuffle(spoiler)
-                #     spoiler.UpdateExits()
                 ShuffleItems(spoiler)
 
                 spoiler.location_references = [
@@ -267,7 +268,8 @@ if baseclasses_loaded:
                 ]
                 spoiler.UpdateLocations(spoiler.LocationList)
                 compileMicrohints(spoiler)
-                spoiler.majorItems = []
+                spoiler.majorItems = IdentifyMajorItems(spoiler)
+                # TODO: look up if the AP item on Jetpac is a major item
                 patch_data, _ = patching_response(spoiler)
                 spoiler.FlushAllExcessSpoilerData()
                 patch_file = self.update_seed_results(patch_data, spoiler, self.player)
