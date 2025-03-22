@@ -352,7 +352,7 @@ class LogicVarHolder:
             elif item_name.startswith("Event, "):
                 eventArchItems.append(item_name)
             else:
-                corresponding_item_id = Items[item_name]
+                corresponding_item_id = Items[item_name.replace(" ", "")]  # The only items that need space removal *should* be AP starting inventory items
                 for i in range(item_count):
                     ownedItems.append(corresponding_item_id)
 

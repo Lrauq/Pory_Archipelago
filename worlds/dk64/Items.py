@@ -97,6 +97,15 @@ def setup_items(world: World) -> typing.List[DK64Item]:
         item_table.append(DK64Item(seed_item.name, classification, full_item_table[item.name].code, world.player))
         # print("Adding item: " + seed_item.name + " | " + str(classification))
 
+    # Extract starting moves from the list - these items will be placed in your starting inventory directly
+    for move in world.options.start_inventory:
+        for i in range(world.options.start_inventory[move]):
+            print(move)
+            for item in item_table:
+                if item.name == move:
+                    item_table.remove(item)
+                    break
+
     # If there's too many locations and not enough items, add some junk
     junk_item = DK64RItem.ItemList[DK64RItems.JunkMelon]
     # print("location comparison: " + str(world.logic_holder.location_pool_size - 1))

@@ -24,7 +24,7 @@ if baseclasses_loaded:
     from DK64R.randomizer.Enums.Items import Items as DK64RItems
     from DK64R.randomizer.SettingStrings import decrypt_settings_string_enum
     from .Items import DK64Item, full_item_table, setup_items
-    from .Options import GenerateDK64Options, dk64_options
+    from .Options import DK64Options
     from .Regions import all_locations, create_regions, connect_regions
     from .Rules import set_rules
     import random
@@ -75,8 +75,8 @@ if baseclasses_loaded:
         Play as the whole DK Crew and rescue the Golden Banana hoard from King K. Rool.
         """
         game: str = "Donkey Kong 64"
-        #option_definitions = dk64_options
-        option_definitions = GenerateDK64Options()
+        options_dataclass = DK64Options
+        options: DK64Options
         topology_present = False
         data_version = 0
 
@@ -92,6 +92,7 @@ if baseclasses_loaded:
             # V1 LIMITATION: We are restricting settings pretty heavily. This string serves as the base for all seeds, with AP options overriding some options
             self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKi4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
             settings_dict = decrypt_settings_string_enum(self.settings_string)
+            settings_dict["archipelago"] = True
             settings = Settings(settings_dict, self.random)
             spoiler = Spoiler(settings)
             spoiler.settings.shuffled_location_types.append(Types.ArchipelagoItem)
@@ -119,12 +120,15 @@ if baseclasses_loaded:
             # Handle Loading Zones - this will handle LO and (someday?) LZR appropriately
             if spoiler.settings.shuffle_loading_zones != ShuffleLoadingZones.none:
                 ShuffleExits.ExitShuffle(spoiler, skip_verification=True)
-                spoiler.UpdateExits() 
+                spoiler.UpdateExits()
 
         def create_regions(self) -> None:
             create_regions(self.multiworld, self.player, self.logic_holder)
 
         def create_items(self) -> None:
+            # Handle starting inventory alterations here
+            if not self.options.climbing_shuffle.value:
+                self.options.start_inventory.options["Climbing"] = 1
             itempool: typing.List[DK64Item] = setup_items(self)
             self.multiworld.itempool += itempool
 
@@ -143,7 +147,7 @@ if baseclasses_loaded:
             try:
                 spoiler = self.logic_holder.spoiler
                 spoiler.settings.archipelago = True
-                spoiler.settings.random = self.multiworld.per_slot_randoms[self.player]
+                spoiler.settings.random = self.random
                 spoiler.pregiven_items = []
                 # Read through all item assignments in this AP world and find their DK64 equivalents so we can update our world state for patching purposes
                 for ap_location in self.multiworld.get_locations(self.player):
@@ -311,12 +315,11 @@ if baseclasses_loaded:
             pass
 
         def fill_slot_data(self) -> dict:
-            slot_data = self._get_slot_data()
-            for option_name in dk64_options:
-                option = getattr(self.multiworld, option_name)[self.player]
-                slot_data[option_name] = option.value
-
-            return slot_data
+            return {
+                "Goal": self.options.goal.value,
+                "ClimbingShuffle": self.options.climbing_shuffle.value,
+                "PlayerNum": self.player,
+            }
 
         def create_item(self, name: str, force_non_progression=False) -> Item:
             data = full_item_table[name]
