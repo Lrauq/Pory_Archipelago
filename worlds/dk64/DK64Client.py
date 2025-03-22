@@ -81,8 +81,8 @@ class DK64Client:
         self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, 0xFF)
 
     def send_message(self, item_name, player_name, event_type="from"):
-        stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ")
-        stripped_player_name = "".join(e for e in player_name if str(e).isalnum() or str(e) == " ")
+        stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ").strip()
+        stripped_player_name = "".join(e for e in player_name if str(e).isalnum() or str(e) == " ").strip()
         self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
         self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"{event_type} {stripped_player_name}")
 
@@ -171,26 +171,15 @@ class DK64Client:
                 header = 0x807FF6E8
             else:
                 header = 0x807FF400 + (shop_index * 0xF0) + (kong_index * 0x30) + (level_index * 6)
-
-            # Check if the purchase data is already cached
-            if (shop_index, kong_index, level_index) not in self._purchase_cache:
-                purchase_type = self.n64_client.read_u16(header + 0)
-                purchase_value = self.n64_client.read_u16(header + 2)
-                purchase_kong = self.n64_client.read_u8(header + 4)
-
-                # Cache the values
-                self._purchase_cache[(shop_index, kong_index, level_index)] = (purchase_type, purchase_value, purchase_kong)
-            else:
-                # Retrieve from cache
-                purchase_type, purchase_value, purchase_kong = self._purchase_cache[(shop_index, kong_index, level_index)]
-
+            purchase_type = self.n64_client.read_u16(header + 0)
+            purchase_value = self.n64_client.read_u16(header + 2)
+            purchase_kong = self.n64_client.read_u8(header + 4)
             return self._getShopStatus(purchase_type, purchase_value, purchase_kong)
         else:
             if self.flag_lookup is None:
                 self._build_flag_lookup()
-
             # Check if the flag exists in the lookup table
-            if flag_index in self.flag_lookup:
+            if self.flag_lookup.get(flag_index):
                 target_flag = self.flag_lookup[flag_index]
                 if target_flag & 0x8000:
                     return self.getMoveStatus(target_flag)
@@ -203,7 +192,9 @@ class DK64Client:
                 return _bulk_read_dict.get(flag_index) != 0
 
     def bulk_lookup(self, flag_index, _bulk_read_dict):
-        if flag_index in self.flag_lookup:
+        if self.flag_lookup is None:
+            self._build_flag_lookup()
+        if self.flag_lookup.get(flag_index):
             target_flag = self.flag_lookup[flag_index]
             byte_index = target_flag >> 3
             offset = DK64MemoryMap.EEPROM + byte_index
@@ -214,34 +205,25 @@ class DK64Client:
             _bulk_read_dict[flag_index] = offset
 
     async def readChecks(self, cb):
-        """Run checks in parallel using asyncio with optimized processing."""
+        """Run checks in parallel using asyncio."""
         new_checks = []
-        remove_checks = set()  # Collect items to remove after iteration
-
-        level_map = {"Japes": 0, "Aztec": 1, "Factory": 2, "Galleon": 3, "Forest": 4, "Caves": 5, "Castle": 6, "Isles": 7}
-        shop_map = {"Cranky": 0, "Funky": 1, "Candy": 2}
-        kong_map = {"Donkey": 0, "Diddy": 1, "Lanky": 2, "Tiny": 3, "Chunky": 4}
-        if self.flag_lookup is None:
-            self._build_flag_lookup()
         _bulk_read_dict = {}
-        for id in self.remaining_checks[:]:  # Iterate over a copy to avoid modification issues
-
+        for id in self.remaining_checks:
             name = check_id_to_name.get(id)
-            if not name:
-                continue
-
-            # Check location_name_to_flag first
+            # Try to get the check via location_name_to_flag
             check = location_name_to_flag.get(name)
             if check:
                 self.bulk_lookup(check, _bulk_read_dict)
-
-            # Check item_ids for flag_id
-            check = item_ids.get(id)
-            if check:
-                flag_id = check.get("flag_id")
-                if flag_id:
-                    self.bulk_lookup(flag_id, _bulk_read_dict)
-
+            # If its not there using the id lets try to get it via item_ids
+            else:
+                check = item_ids.get(id)
+                if check:
+                    flag_id = check.get("flag_id")
+                    if not flag_id:
+                        # logger.error(f"Item {name} has no flag_id")
+                        continue
+                    else:
+                        self.bulk_lookup(flag_id, _bulk_read_dict)
         dict_data = self.n64_client.read_dict(_bulk_read_dict)
         # Json loads the dict_data
         dict_data = json.loads(dict_data)
@@ -250,49 +232,87 @@ class DK64Client:
             shift = int(key) & 7
             flag_status = (int(val[0]) >> shift) & 1
             _bulk_read_dict[int(key)] = flag_status
-        for id in self.remaining_checks[:]:  # Iterate over a copy to avoid modification issues
+        for id in self.remaining_checks:
             name = check_id_to_name.get(id)
-            if not name:
-                continue
-
-            # Check location_name_to_flag first
+            # Try to get the check via location_name_to_flag
             check = location_name_to_flag.get(name)
-            if check and self.getCheckStatus("location", check, _bulk_read_dict=_bulk_read_dict):
-                print(name)
-                new_checks.append(id)
-                remove_checks.add(id)
-                continue
-
-            # Check item_ids for flag_id
-            check = item_ids.get(id)
             if check:
-                flag_id = check.get("flag_id")
-                if flag_id and self.getCheckStatus("location", flag_id, _bulk_read_dict=_bulk_read_dict):
-                    print(name)
+                # Assuming we did find it in location_name_to_flag
+                check_status = self.getCheckStatus("location", check, _bulk_read_dict=_bulk_read_dict)
+                if check_status:
+                    logger.info(f"Found {name} via location_name_to_flag")
+                    self.remaining_checks.remove(id)
                     new_checks.append(id)
-                    remove_checks.add(id)
+            # If its not there using the id lets try to get it via item_ids
+            else:
+                check = item_ids.get(id)
+                if check:
+                    flag_id = check.get("flag_id")
+                    if not flag_id:
+                        # logger.error(f"Item {name} has no flag_id")
+                        continue
+                    else:
+                        check_status = self.getCheckStatus("location", flag_id, _bulk_read_dict=_bulk_read_dict)
+                        if check_status:
+                            logger.info(f"Found {name} via item_ids")
+                            self.remaining_checks.remove(id)
+                            new_checks.append(id)
+                else:
+                    # If the content is 3 parts separated by a space, we can assume it's a shop check
+                    content = name.split(" ")
+                    if name == "The Banana Fairy's Gift":
+                        check_status = self.getCheckStatus("shop", None, 3, None, None)
+                        if check_status:
+                            # logger.info(f"Found {name} via location_name_to_flag")
+                            self.remaining_checks.remove(id)
+                            new_checks.append(id)
+                        continue
+                    elif len(content) == 3:
+                        level_index = None
+                        shop_index = None
+                        kong_index = None
+                        if content[0] == "Japes":
+                            level_index = 0
+                        elif content[0] == "Aztec":
+                            level_index = 1
+                        elif content[0] == "Factory":
+                            level_index = 2
+                        elif content[0] == "Galleon":
+                            level_index = 3
+                        elif content[0] == "Forest":
+                            level_index = 4
+                        elif content[0] == "Caves":
+                            level_index = 5
+                        elif content[0] == "Castle":
+                            level_index = 6
+                        elif content[0] == "Isles":
+                            level_index = 7
+                        if content[1] == "Cranky":
+                            shop_index = 0
+                        elif content[1] == "Funky":
+                            shop_index = 1
+                        elif content[1] == "Candy":
+                            shop_index = 2
+                        if content[2] == "Donkey":
+                            kong_index = 0
+                        elif content[2] == "Diddy":
+                            kong_index = 1
+                        elif content[2] == "Lanky":
+                            kong_index = 2
+                        elif content[2] == "Tiny":
+                            kong_index = 3
+                        elif content[2] == "Chunky":
+                            kong_index = 4
+                        # If any of these are not set, continue
+                        if level_index is None or shop_index is None or kong_index is None:
+                            continue
+                        check_status = self.getCheckStatus("shop", None, shop_index, level_index, kong_index)
+                        if check_status:
+                            # logger.info(f"Found {name} via shop")
+                            self.remaining_checks.remove(id)
+                            new_checks.append(id)
+                        continue
                 continue
-
-            # Special case: "The Banana Fairy's Gift"
-            if name == "The Banana Fairy's Gift" and self.getCheckStatus("shop", None, 3, None, None):
-                new_checks.append(id)
-                remove_checks.add(id)
-                continue
-
-            # Shop Check Processing (Three-word names)
-            content = name.split(" ")
-            if len(content) == 3:
-                level_index = level_map.get(content[0])
-                shop_index = shop_map.get(content[1])
-                kong_index = kong_map.get(content[2])
-
-                if None not in (level_index, shop_index, kong_index):
-                    if self.getCheckStatus("shop", None, shop_index, level_index, kong_index):
-                        new_checks.append(id)
-                        remove_checks.add(id)
-
-        # Remove processed checks while keeping the original list
-        self.remaining_checks = [id for id in self.remaining_checks if id not in remove_checks]
 
         if new_checks:
             cb(new_checks)
