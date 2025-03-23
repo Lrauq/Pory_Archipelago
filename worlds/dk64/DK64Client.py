@@ -474,7 +474,7 @@ class DK64Context(CommonContext):
                 sender = args.get("item").player == self.slot
                 player = args.get("receiving")
                 item_name = self.item_names.lookup_in_game(args.get("item").item, self.slot_info[player].game)
-                if sender:
+                if sender and player != self.slot:
                     player_name = self.player_names.get(player)
                     self.client.sent_checks.append((item_name, player_name))
 
