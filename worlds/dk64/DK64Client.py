@@ -81,8 +81,12 @@ class DK64Client:
         self.n64_client.write_u8(self.memory_pointer + DK64MemoryMap.connection, 0xFF)
 
     def send_message(self, item_name, player_name, event_type="from"):
-        stripped_item_name = "".join(e for e in item_name if str(e).isalnum() or str(e) == " ").strip()
-        stripped_player_name = "".join(e for e in player_name if str(e).isalnum() or str(e) == " ").strip()
+        def sanitize_and_trim(input_string, max_length=0x20):
+            sanitized = "".join(e for e in input_string if e.isalnum() or e == " ").strip()
+            return sanitized[:max_length]
+
+        stripped_item_name = sanitize_and_trim(item_name)
+        stripped_player_name = sanitize_and_trim(player_name)
         self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_string, f"{stripped_item_name}")
         self.n64_client.write_bytestring(self.memory_pointer + DK64MemoryMap.fed_subtitle, f"{event_type} {stripped_player_name}")
 
