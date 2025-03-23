@@ -44,6 +44,17 @@ if baseclasses_loaded:
     from DK64R.randomizer.Lists.Location import PreGivenLocations
     from worlds.LauncherComponents import Component, components, Type, icon_paths, local_path, launch as launch_component
     import DK64R.randomizer.ShuffleExits as ShuffleExits
+    from Utils import open_filename
+    import shutil
+    import zlib
+
+    def crc32_of_file(file_path):
+        """Compute CRC32 checksum of a file."""
+        crc_value = 0
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                crc_value = zlib.crc32(chunk, crc_value)
+        return f"{crc_value & 0xFFFFFFFF:08X}"  # Convert to 8-character hex
 
     def launch_client():
         from .DK64Client import launch
@@ -87,6 +98,32 @@ if baseclasses_loaded:
 
 
         def __init__(self, multiworld: MultiWorld, player: int):
+            # Check if dk64.z64 exists, if it doesn't prompt the user to provide it
+            # ANd then we will copy it to the root directory
+            crc_values = ["D44B4FC6", "AA0A5979", "96972D67"]
+            rom_file = "dk64.z64"
+            if not os.path.exists(rom_file):
+                print("Please provide a DK64 ROM file.")
+                file = open_filename("Select DK64 ROM", (("N64 ROM", (".z64", ".n64")),))
+                if not file:
+                    raise FileNotFoundError("No ROM file selected.")
+                crc = crc32_of_file(file)
+                print(f"CRC32: {crc}")
+                if crc not in crc_values:
+                    print("Invalid DK64 ROM file, please make sure your ROM is big endian.")
+                    raise FileNotFoundError("Invalid DK64 ROM file, please make sure your ROM is a vanilla DK64 file in big endian.")
+                # Copy the file to the root directory
+                try:
+                    shutil.copy(file, rom_file)
+                except Exception as e:
+                    raise FileNotFoundError(f"Failed to copy ROM file, this may be a permissions issue: {e}")
+            else:
+                crc = crc32_of_file(rom_file)
+                print(f"CRC32: {crc}")
+                if crc not in crc_values:
+                    print("Invalid DK64 ROM file, please make sure your ROM is big endian.")
+                    raise FileNotFoundError("Invalid DK64 ROM file, please make sure your ROM is a vanilla DK64 file in big endian.")
+
             self.rom_name_available_event = threading.Event()
             super().__init__(multiworld, player)
             # V1 LIMITATION: We are restricting settings pretty heavily. This string serves as the base for all seeds, with AP options overriding some options
