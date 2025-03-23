@@ -81,8 +81,10 @@ class PJ64Client:
         self._verify_pj64_config(os.path.join(os.path.dirname(executable), "Config", "Project64.cfg"))
         # Check if project 64 is running
         if not self._is_exe_running(os.path.basename(executable)):
+            # Request the user to provide their ROM
+            rom = open_filename("Select ROM", (("N64 ROM", (".n64", ".z64", ".v64")),))
             # Run project 64
-            os.popen(f'"{executable}"')
+            os.popen(f'"{executable}" "{rom}"')
 
     def _is_exe_running(self, exe_name):
         """Check if a given executable is running."""
@@ -118,6 +120,7 @@ class PJ64Client:
         if "Debugger" not in config:
             config.add_section("Debugger")
         config.set("Debugger", "Debugger", "1")
+        config.set("Debugger", "Autorun Scripts", "ap_adapter.js")
 
         # Write the updated settings back to the file
         try:
