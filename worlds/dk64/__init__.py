@@ -126,14 +126,6 @@ if baseclasses_loaded:
 
             self.rom_name_available_event = threading.Event()
             super().__init__(multiworld, player)
-            # V1 LIMITATION: We are restricting settings pretty heavily. This string serves as the base for all seeds, with AP options overriding some options
-            self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKi4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
-            settings_dict = decrypt_settings_string_enum(self.settings_string)
-            settings_dict["archipelago"] = True
-            settings = Settings(settings_dict, self.random)
-            spoiler = Spoiler(settings)
-            spoiler.settings.shuffled_location_types.append(Types.ArchipelagoItem)
-            self.logic_holder = LogicVarHolder(spoiler, self)
 
         @classmethod
         def stage_assert_generate(cls, multiworld: MultiWorld):
@@ -148,6 +140,16 @@ if baseclasses_loaded:
             }
 
         def generate_early(self):
+            # V1 LIMITATION: We are restricting settings pretty heavily. This string serves as the base for all seeds, with AP options overriding some options
+            self.settings_string = "fjNPxAMxDIUx0QSpbHPUlZlBLg5gPQ+oBwRDIhKlsa58Iz8fiNEpEtiFKi4bVAhMF6AAd+AAOCAAGGAAGKAAAdm84FBiMhjoStwFIKW2wLcBJIBpkzVRCjFIKUUwGTLK/BQBuAIMAN4CBwBwAYQAOIECQByAoUAOYGCwB0A4YeXIITIagOrIrwAZTiU1QwkoSjuq1ZLEjQ0gRydoVFtRl6KiLAImIoArFljkbsl4u8igch2MvacgZ5GMGQBlU4IhAALhQALhgAJhwAJiAAHrQAHiQAFigADiwAHjAAFjQADrgALT5XoElypbPZZDCOZJ6Nh8Zq7WBgM5dVhVFZoKZUWjHFKAFBWDReUAnFRaJIuIZiTxrSyDSIjXR2AB0AvCoICQoLDA0OEBESFBUWGBkaHB0eICEiIyQlJicoKSorLC0uLzAxMjM0Nay+AMAAwgDEAJ0AsgBRAA"
+            settings_dict = decrypt_settings_string_enum(self.settings_string)
+            settings_dict["archipelago"] = True
+            settings_dict["starting_kongs_count"] = self.options.starting_kong_count.value
+            settings = Settings(settings_dict, self.random)
+            spoiler = Spoiler(settings)
+            spoiler.settings.shuffled_location_types.append(Types.ArchipelagoItem)
+            self.logic_holder = LogicVarHolder(spoiler, self)
+
             # Handle enemy rando
             spoiler = self.logic_holder.spoiler
             spoiler.enemy_rando_data = {}
@@ -163,9 +165,6 @@ if baseclasses_loaded:
             create_regions(self.multiworld, self.player, self.logic_holder)
 
         def create_items(self) -> None:
-            # Handle starting inventory alterations here
-            if not self.options.climbing_shuffle.value:
-                self.options.start_inventory.options["Climbing"] = 1
             itempool: typing.List[DK64Item] = setup_items(self)
             self.multiworld.itempool += itempool
 
@@ -178,7 +177,7 @@ if baseclasses_loaded:
         def generate_basic(self):
             connect_regions(self, self.logic_holder)
 
-            self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("BananaHoard", ItemClassification.progression, 0x000000, self.player)) # TEMP?
+            self.multiworld.get_location("Banana Hoard", self.player).place_locked_item(DK64Item("BananaHoard", ItemClassification.progression, 0xD64060, self.player)) # TEMP?
 
         def generate_output(self, output_directory: str):
             try:

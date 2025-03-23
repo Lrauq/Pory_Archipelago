@@ -97,14 +97,55 @@ def setup_items(world: World) -> typing.List[DK64Item]:
         item_table.append(DK64Item(seed_item.name, classification, full_item_table[item.name].code, world.player))
         # print("Adding item: " + seed_item.name + " | " + str(classification))
 
-    # Extract starting moves from the list - these items will be placed in your starting inventory directly
+    # Extract starting moves from the item table - these items will be placed in your starting inventory directly
     for move in world.options.start_inventory:
         for i in range(world.options.start_inventory[move]):
-            print(move)
             for item in item_table:
-                if item.name == move:
+                # The starting inventory move name may or may not have spaces in it.
+                if item.name == move.replace(" ", ""):
                     item_table.remove(item)
                     break
+
+    # Handle starting Kong list here
+    for kong in world.logic_holder.settings.starting_kong_list:
+        kong_item = DK64RItemPoolUtility.ItemFromKong(kong)
+        for item in item_table:
+            if item.name == kong_item.name:
+                # We don't need to precollect Kong items, as they'll patch in to the main menu properly
+                item_table.remove(item)
+                print("Removing starting kong: " + kong_item.name)
+                break
+    print(world.logic_holder.settings.starting_kong_list)
+
+    # Handle starting move alterations here
+    all_eligible_starting_moves = DK64RItemPoolUtility.AllKongMoves()
+    all_eligible_starting_moves.extend(DK64RItemPoolUtility.TrainingBarrelAbilities())
+    # Either include Climbing as an eligible starting move or place it in the starting inventory
+    if world.options.climbing_shuffle:
+        all_eligible_starting_moves.extend(DK64RItemPoolUtility.ClimbingAbilities())
+    else:
+        world.multiworld.push_precollected(DK64Item("Climbing", ItemClassification.progression, full_item_table[DK64RItems.Climbing.name].code, world.player))
+        for item in item_table:
+            if item.name == "Climbing":
+                item_table.remove(item)
+                break
+
+    world.random.shuffle(all_eligible_starting_moves)
+    for i in range(world.options.starting_move_count):
+        if len(all_eligible_starting_moves) == 0:
+            break
+        move_id = all_eligible_starting_moves.pop()
+        move = DK64RItem.ItemList[move_id]
+        # We don't want to pick anything we're already starting with. As an aside, the starting inventory move name may or may not have spaces in it.
+        if move_id.name in world.options.start_inventory.options or move.name in world.options.start_inventory.options:
+            # If we were to choose a move we're forcibly starting with, pick another
+            i =- 1
+            continue
+        for item in item_table:
+            if item.name == move_id.name or item.name == move.name:
+                world.multiworld.push_precollected(item)
+                item_table.remove(item)
+                break
 
     # If there's too many locations and not enough items, add some junk
     junk_item = DK64RItem.ItemList[DK64RItems.JunkMelon]
