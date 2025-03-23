@@ -1,4 +1,4 @@
-[submodule "worlds/dk64/DK64R"]
-	path = worlds/dk64/DK64R
+[submodule "worlds/dk64/"]
+	path = worlds/dk64/
 	url = https://github.com/2dos/DK64-Randomizer.git
 	branch = hammer-and-chisel
